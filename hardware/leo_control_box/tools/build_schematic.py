@@ -15,6 +15,7 @@ ROOT = "e63e39d7-6ac0-4ffd-8aa3-1841a4541b55"          # root sheet uuid from th
 POWER = {"+5V", "+3V3", "GND"}
 FP = PROJ + ":"
 KICAD_CLI = "C:/Program Files/KiCad/10.0/bin/kicad-cli.exe"
+SYM_NS = uuid.UUID("5b1d6f0e-4c1a-4e0b-9d5e-438000000000")   # stable symbol uuids keep the PCB linked across regenerations
 
 
 def u():
@@ -171,8 +172,8 @@ def instance(lib_id, ref, value, fp, x, y, unit=1, dnp=False, hide_ref=False, on
     vx, vy = props.get("Value", (0, -5))
     pins = [p for p in PINS[lib_id] if p[0] in (str(unit), "0")]
     s = ('\t(symbol (lib_id "%s") (at %s %s 0) (unit %d) (exclude_from_sim no) (in_bom %s) (on_board %s) (dnp %s) (uuid "%s")\n'
-         % (lib_id, fmt(x), fmt(y), unit, "no" if ref.startswith("#") else "yes", "yes" if on_board else "no",
-            "yes" if dnp else "no", u()))
+         % (lib_id, fmt(x), fmt(y), unit, "no" if ref.startswith(("#", "TP")) else "yes", "yes" if on_board else "no",
+            "yes" if dnp else "no", u() if ref.startswith("#") else str(uuid.uuid5(SYM_NS, "%s:%d" % (ref, unit)))))
     s += '\t\t(property "Reference" "%s" (at %s %s 0) (effects (font (size 1.27 1.27))%s))\n' % (ref, fmt(x + rx), fmt(y - ry), " (hide yes)" if hide_ref else "")
     s += '\t\t(property "Value" "%s" (at %s %s 0) (effects (font (size 1.27 1.27))))\n' % (value, fmt(x + vx), fmt(y - vy))
     s += '\t\t(property "Footprint" "%s" (at %s %s 0) (effects (font (size 1.27 1.27)) (hide yes)))\n' % (fp, fmt(x), fmt(y))
@@ -277,7 +278,7 @@ def build():
     text("Idle = high = LED on. 10k pull-ups hold the lines idle while the Teensy is in reset. Peaking caps DNP.", 170, 37, 1.8)
     tx = [("EHT_TX", "EHT"), ("STG_TX", "STG/VAC"), ("EO_F1", "EO F1 frame gate"), ("EO_F2", "EO F2 line gate"), ("EO_F3", "EO F3 registers"),
           ("VP_TX", "VP controller (its RX1 is an HFBR-2524)")]
-    gates = [("U2", 1), ("U2", 2), ("U2", 3), ("U2", 4), ("U3", 1), ("U3", 2)]
+    gates = [("U2", 1), ("U2", 2), ("U2", 4), ("U3", 1), ("U3", 2), ("U2", 3)]   # grouped by board position: U2 = EHT, STG, VP, F1; U3 = F2, F3
     tx_ref = ["U4", "U5", "U6", "U7", "U8", "U12"]
     tx_r = [10, 11, 12, 13, 14, 15]
     gate_pins = {1: ("1", "2", "3"), 2: ("4", "5", "6"), 3: ("10", "9", "8"), 4: ("13", "12", "11")}

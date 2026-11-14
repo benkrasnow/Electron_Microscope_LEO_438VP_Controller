@@ -17,7 +17,6 @@
 "R20-R25,R50,R51,R60,R61","56","leo_control_box:R_0805_2012Metric","Yageo","RC0805FR-0756RL","311-56.0CRCT-ND","0.10","10","",""
 "R40,R41","2.2k","leo_control_box:R_0805_2012Metric","Yageo","RC0805FR-072K2L","311-2.20KCRCT-ND","0.10","2","",""
 "R65,R66","5.1k","leo_control_box:R_0805_2012Metric","Yageo","RC0805FR-075K1L","311-5.10KCRCT-ND","0.10","2","USB-C CC pull-downs (sink, default USB power)",""
-"TP1","VBAT wire","leo_control_box:TestPoint_THTPad_D1.5mm_Drill0.7mm","","","","","1","",""
 "U1","Teensy 4.0","leo_control_box:Teensy_4.0","PJRC / SparkFun","15583 (Teensy 4.0)","1568-15583-ND","25.66","1","owner has stock; Digi-Key stock 0 on 2026-11-13",""
 "U2,U3","74AHCT125","leo_control_box:SOIC-14_3.9x8.7mm_P1.27mm","Texas Instruments","SN74AHCT125DR","296-4652-1-ND","0.52","2","",""
 "U4-U8,U12","HFBR-1521Z","leo_control_box:AGILENT_HFBR-152x","Broadcom","HFBR-1521Z","516-2043-ND","19.14","6","owner has stock; Digi-Key backordered (alt AFBR-1521CZ 516-3584-ND)",""

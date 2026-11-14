@@ -15,3 +15,13 @@ _autosave-*
 
 # KiCad local history (its own git repo)
 .history/
+
+# Freerouting autorouter (downloaded, not tracked)
+hardware/leo_control_box/tools/freerouting/
+# KiCad intermediate / backup files
+*.dsn
+*.ses
+hardware/leo_control_box/leo_control_box.net
+*-backups/
+fp-info-cache
+hardware/leo_control_box/logs/
