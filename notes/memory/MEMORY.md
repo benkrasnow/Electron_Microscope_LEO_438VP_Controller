@@ -1,4 +1,5 @@
 - [Project folder layout](project-folder-layout.md) — new work in Complete_438VP_control, originals untouched in "LEO 438VP - claude"
 - [Filament off for pressure changes](filament-off-for-pressure-changes.md) — replacement controller must cool filament before any VP/HV/vent transition
 - [Scan fiber status](scan-fiber-status.md) — EO link decoded (spec rev 1.1 + system datasheet, 2026-11-13); next: replacement IP board design
-- [Replacement plan: OBI/Glasgow](replacement-plan-obi-glasgow.md) — OBI on Glasgow will drive all links; HFBR-1521Z/2521Z fibers; no OBI Python UI
+- [Replacement plan](replacement-plan-obi-glasgow.md) — OBI/Glasgow for imaging + separate MCU control box enforcing safety; HFBR fibers; no OBI Python UI
+- [Git version history](git-version-history.md) — project folder is a local git repo; commit after changes, never push
