@@ -55,3 +55,9 @@ Run them with the original files as arguments, for example `python t34.py "<orig
 3. Easiest: run `python cold_boot_loop.py <prefix> [shots] [minutes] [high_limit_us]` in the background; it re-arms after every shot and writes `<prefix>_NN.npz`, `_ch3.txt` and `<prefix>_log.txt` (trigger wall-clock times). `high_limit_us = 2750` catches single writes but only works at scan speed 5 in full frame and not while dynamic focus is on; `100` (default) catches bursts at any speed. About 17 s dead time per shot. Stop it with `touch STOP` in `scope_tools/`.
    Alternative, one shot at a time: `python arm_burst.py`, then `./wait_grab_decode.sh <tag>`, change one control, then `python summarize_burst.py <tag>`.
 4. Finish with `python scope_setup.py restore` (if it cannot connect right after the loop stops, retry after ~15 s).
+
+## Version history (git)
+
+This folder is a local git repository (no remote; nothing is uploaded anywhere). Claude commits after each meaningful change so any earlier version can be restored. Raw scope waveforms (`scope_captures/*.npz`, 6.8 GB) are excluded via `.gitignore`; their decoded `_ch3.txt`, screenshots and logs are tracked. Line-ending conversion is off (`core.autocrlf false`) so KiCad files are stored byte-for-byte.
+
+Useful commands if you ever want them: `git log --oneline` (list versions), `git show <id> --stat` (what changed), `git checkout <id> -- <file>` (restore one file from an earlier version).
