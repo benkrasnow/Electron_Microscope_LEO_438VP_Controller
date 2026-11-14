@@ -35,6 +35,7 @@ Passives (R, C, LED, fuse) and generic connectors use KiCad's stock `Device` and
 | 1× | OBI sync header: GND, LINE_SYNC, FRAME_SYNC | `Conn_01x03` | 1 × 3 2.54 mm | stock |
 | 1× | Display header, 2×10 shrouded box header (Sullins SBH11-PBPC-D10-ST-BK) | `Conn_02x10_Odd_Even` | IDC-Header_2x10_P2.54mm_Vertical | stock |
 | off-board | Newhaven NHD-4.3-800480FT-CSXP-CTP display + Adafruit 5294 2×10 IDC cable (1 ft) | `MountingHole` placeholders X1/X2, in BOM, not on the board | — | — |
+| 1× | **USB-C power-only receptacle** (GCT USB4125-GF-A) with 5.1 kΩ CC pull-downs R65/R66: 5 V from a plain wall adapter, no USB data or PD | `USB_C_Receptacle_PowerOnly_6P` | USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal | stock |
 | 1× | 5 V input terminal block + 1812 PTC fuse + bulk capacitor | `Conn_01x02`, `Polyfuse`, `C` | Phoenix MKDS 5.08, Fuse 1812, C 1206 | stock |
 | — | R / C / LED 0805 | `R`, `C`, `LED` | 0805 | stock |
 
@@ -82,7 +83,7 @@ MAX3232 at 3.3 V with 4 × 0.1 µF charge-pump capacitors plus bypass. Wire it a
 3.3 V bus with 2.2 kΩ pull-ups on two Qwiic sockets, kept as a spare expansion port (no devices on board).
 
 **Power.**
-5 V from the SEM side (terminal block) → PTC fuse → +5 V rail (HFBR parts, AHCT drivers, Teensy VIN). The Teensy's 3.3 V regulator feeds the MAX3232 and the pull-ups (it can supply ~250 mA).
+5 V from either the terminal block J1 or the USB-C receptacle J10 (both feed +5V_IN; **use one at a time**, they are not isolated from each other) → PTC fuse → +5 V rail (HFBR parts, AHCT drivers, Teensy VIN). The Teensy's 3.3 V regulator feeds the MAX3232 and the pull-ups (it can supply ~250 mA).
 
 ## Before layout: verify against datasheets
 
@@ -94,7 +95,7 @@ MAX3232 at 3.3 V with 4 × 0.1 µF charge-pump capacitors plus bypass. Wire it a
 
 | Block | Refs |
 |---|---|
-| Power | J1 (5 V in), F1, C1, C2, D1/R1 power LED, D2/R2 status LED (Teensy 23) |
+| Power | J1 (5 V in, terminal block), J10 (5 V in, USB-C) with R65/R66 5.1 kΩ CC pull-downs, F1, C1, C2, D1/R1 power LED, D2/R2 status LED (Teensy 23) |
 | Controller | U1 Teensy 4.0 |
 | Fiber TX (EHT, STG, EO F1, F2, F3) | R10–R14 pull-ups, U2A–D / U3A buffers, Q1–Q5, U4–U8 HFBR-1521Z, R20–R24 LED current (56 Ω), C20–C24 peaking (DNP); U3B–D unused (input low, output disabled); U2E/U3E power + C30/C31 |
 | Fiber RX (EHT, STG, EO F4) | U9–U11 HFBR-2521Z, C40–C42, R30–R32 pull-ups (1 k to 3.3 V) |
@@ -136,4 +137,11 @@ Newhaven **NHD-4.3-800480FT-CSXP-CTP**: 4.3″ 800×480 IPS, capacitive touch, F
 
 Decoupling at J9: C62 100 nF (+3V3), C63 47 µF (+5V). Estimated +5V load with the display: Teensy ~100 mA + five transmitter LEDs ~275 mA (lit while idle) + receivers and logic ~50 mA + backlight 240 mA ≈ 0.65 A, within F1's 1.1 A hold rating. The +3V3 rail (Teensy regulator) gains 40 mA.
 
-Costs: board parts about **$15.47**; display $75.14 and cable $1.95 off-board.
+Costs: board parts about **$15.47** (now $16.28 with the USB-C input); display $75.14 and cable $1.95 off-board.
+
+## USB-C power input (added 2026-11-14)
+
+J10 is a power-only USB-C receptacle (GCT USB4125-GF-A, 2073-USB4125-GF-ACT-ND, $0.61). VBUS goes to +5V_IN, ahead of the PTC fuse, in parallel with the terminal block J1; the shield and GND go to ground. CC1 and CC2 each have a 5.1 kΩ pull-down (R65, R66), which identifies the board as a USB sink, so USB-C-to-C chargers switch on their 5 V output. USB-A wall adapters with an A-to-C cable supply 5 V regardless.
+
+- No PD controller: the board only ever gets 5 V. It does not read the charger's advertised current (Default / 1.5 A / 3 A), so use an adapter rated **at least 1.5 A** (the board draws about 0.65 A with the display).
+- **Use J1 or J10, not both at once**: the two inputs are tied together without diodes.

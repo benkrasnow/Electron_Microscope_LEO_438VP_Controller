@@ -196,6 +196,7 @@ STOCK_FP = {
     "Connector_Dsub": [DSUB],
     "Connector_JST": ["JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"],
     "Connector_IDC": ["IDC-Header_2x10_P2.54mm_Vertical"],
+    "Connector_USB": ["USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal"],
     "Connector_PinHeader_2.54mm": ["PinHeader_1x03_P2.54mm_Vertical"],
     "TerminalBlock_Phoenix": ["TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal"],
     "Resistor_SMD": ["R_0805_2012Metric"],
@@ -210,6 +211,7 @@ STOCK_SYM = [
     ("74xx", "74AHCT125", "SOIC-14_3.9x8.7mm_P1.27mm"),
     ("Transistor_FET", "2N7002", "SOT-23"),
     ("Connector", "DE9_Pins_MountingHoles", DSUB),
+    ("Connector", "USB_C_Receptacle_PowerOnly_6P", "USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal"),
 ]
 
 

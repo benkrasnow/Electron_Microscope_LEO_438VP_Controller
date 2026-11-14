@@ -120,6 +120,7 @@ PARTS = {
     "R1k":    ("Yageo", "RC0805FR-071KL", "311-1.00KCRCT-ND", 0.10, ""),
     "R2k2":   ("Yageo", "RC0805FR-072K2L", "311-2.20KCRCT-ND", 0.10, ""),
     "R56":    ("Yageo", "RC0805FR-0756RL", "311-56.0CRCT-ND", 0.10, ""),
+    "R5k1":   ("Yageo", "RC0805FR-075K1L", "311-5.10KCRCT-ND", 0.10, "USB-C CC pull-downs (sink, default USB power)"),
     "C100n":  ("Samsung Electro-Mechanics", "CL21B104KBCNNNC", "1276-1003-1-ND", 0.10, "50 V X7R; used everywhere a 100 nF is needed"),
     "C47u":   ("Samsung Electro-Mechanics", "CL31A476MPHNNNE", "1276-3063-1-ND", 0.59, "10 V X5R 1206; low Digi-Key stock (123)"),
     "LED":    ("Lite-On", "LTST-C171GKT", "160-1423-1-ND", 0.15, "green, used for both indicators"),
@@ -134,6 +135,7 @@ PARTS = {
     "TEENSY":  ("PJRC / SparkFun", "15583 (Teensy 4.0)", "1568-15583-ND", 25.66, "owner has stock; Digi-Key stock 0 on 2026-11-13"),
     "HFBR_TX": ("Broadcom", "HFBR-1521Z", "516-2043-ND", 19.14, "owner has stock; Digi-Key backordered (alt AFBR-1521CZ 516-3584-ND)"),
     "HFBR_RX": ("Broadcom", "HFBR-2521Z", "516-2062-ND", 20.46, "owner has stock"),
+    "USBC":    ("GCT", "USB4125-GF-A", "2073-USB4125-GF-ACT-ND", 0.61, "USB-C receptacle, power only (6 pin)"),
     "IDC20":   ("Sullins", "SBH11-PBPC-D10-ST-BK", "S9172-ND", 0.46, "2x10 shrouded box header for the display cable"),
     "LCD":     ("Newhaven Display", "NHD-4.3-800480FT-CSXP-CTP", "757-NHD-4.3-800480FT-CSXP-CTP-ND", 75.14,
                 "OFF-BOARD: 4.3 in 800x480 IPS EVE (FT813) display, capacitive touch"),
@@ -148,13 +150,14 @@ def part_key(lib_id, value, dnp):
     by_name = {"74AHCT125": "AHCT125", "2N7002": "2N7002", "MAX3232": "MAX3232",
                "Teensy_4.0": "TEENSY", "HFBR-1521Z": "HFBR_TX", "HFBR-2521Z": "HFBR_RX",
                "LED": "LED", "Polyfuse": "FUSE", "Conn_01x02": "TB2", "DE9_Pins_MountingHoles": "DE9M",
-               "Conn_01x03": "HDR", "Conn_01x04_MountingPin": "QWIIC", "Conn_02x10_Odd_Even": "IDC20"}
+               "Conn_01x03": "HDR", "Conn_01x04_MountingPin": "QWIIC", "Conn_02x10_Odd_Even": "IDC20",
+               "USB_C_Receptacle_PowerOnly_6P": "USBC"}
     if name in by_name:
         return by_name[name]
     if name == "MountingHole":                         # placeholder symbols for off-board items
         return {"Display NHD-4.3": "LCD", "Display cable": "CABLE20"}[value]
     if name == "R":
-        return {"10k": "R10k", "1k": "R1k", "2.2k": "R2k2", "56": "R56"}[value]
+        return {"10k": "R10k", "1k": "R1k", "2.2k": "R2k2", "56": "R56", "5.1k": "R5k1"}[value]
     if name == "C":
         return {"100n": "C100n", "47u 10V": "C47u"}[value]
     return None
@@ -235,6 +238,13 @@ def build():
           30, 45, {"1": "+5V_IN", "2": "GND"})
     place("Device:Polyfuse", "F1", "1.1A hold", FP + "Fuse_1812_4532Metric", 50, 45, {"1": "+5V_IN", "2": "+5V"})
     two(CB, "C1", "47u 10V", 65, 45, "+5V", "GND")
+    # USB-C power input (5 V from a plain wall adapter; no USB data, no PD). Same +5V_IN node as J1.
+    text("USB-C 5 V in (power only)", 112, 104, 1.8)
+    text("Use J1 or J10, not both.", 112, 108, 1.8)
+    place(T + "USB_C_Receptacle_PowerOnly_6P", "J10", "USB-C 5V", FP + "USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal",
+          125, 78, {"A9": "+5V_IN", "A12": "GND", "A5": "USB_CC1", "B5": "USB_CC2", "SH": "GND"})
+    two(R_, "R65", "5.1k", 155, 81, "USB_CC1", "GND")
+    two(R_, "R66", "5.1k", 163, 81, "USB_CC2", "GND")
     two(C_, "C2", "100n", 75, 45, "+5V", "GND")
     for i, net in enumerate(("+5V", "GND")):                       # PWR_FLAGs for ERC
         x = snap(90 + 12 * i)
