@@ -188,12 +188,10 @@ def teensy_footprint():
 
 
 # ---------------------------------------------------------------- stock footprints to copy
-DSUB = "DSUB-9_Pins_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm"
 STOCK_FP = {
     "OptoDevice": ["AGILENT_HFBR-152x", "AGILENT_HFBR-252x"],
-    "Package_SO": ["SOIC-16_3.9x9.9mm_P1.27mm", "SOIC-14_3.9x8.7mm_P1.27mm", "SOIC-8_3.9x4.9mm_P1.27mm"],
+    "Package_SO": ["SOIC-14_3.9x8.7mm_P1.27mm", "SOIC-8_3.9x4.9mm_P1.27mm"],
     "Package_TO_SOT_SMD": ["SOT-23"],
-    "Connector_Dsub": [DSUB],
     "Connector_JST": ["JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"],
     "Connector_IDC": ["IDC-Header_2x10_P2.54mm_Vertical"],
     "Connector_USB": ["USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal"],
@@ -208,10 +206,8 @@ STOCK_FP = {
 
 # stock symbols copied into the project library: (library, name, project footprint)
 STOCK_SYM = [
-    ("Interface_UART", "MAX3232", "SOIC-16_3.9x9.9mm_P1.27mm"),
     ("74xx", "74AHCT125", "SOIC-14_3.9x8.7mm_P1.27mm"),
     ("Transistor_FET", "2N7002", "SOT-23"),
-    ("Connector", "DE9_Pins_MountingHoles", DSUB),
     ("Connector", "USB_C_Receptacle_PowerOnly_6P", "USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal"),
     ("Isolator", "ISO6720FBD", "SOIC-8_3.9x4.9mm_P1.27mm"),
 ]

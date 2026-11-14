@@ -253,3 +253,18 @@ Beam off and filament cooled. Send new `MC` and `HP`. The state goes 9 → 8 →
 ## 9. Source captures
 
 `20261112_145539_vp_pumpdown_and_vp_mode.log`, `…153419_vp_manual_mc_hp_to7.log`, `…155926_vp_return_to_hv.log`, `…161149_vent_and_pump_4ch.log`, `…162701_vp_watchdog_unplug_hv.log`, `…164437_vp_target_sweep.log`. Working notes: `capture_tools/VP_PROTOCOL.md`.
+
+## Fiber port on the VP control board (traced 2026-11-14 from photos)
+
+The VP control board (PCB "98/46", S/N 98048, MC68HC705C8 firmware "875421 V01") has an unused Versatile Link fiber port next to its DE-9 (PL2): **TX1 = HFBR-1524**, **RX1 = HFBR-2524** (the 40 kBd, high-sensitivity grade). A 4-position DIP switch next to the 4 MHz oscillator chooses which port the processor's single SCI uses. Lever colours follow the resistor colour code:
+
+| Switch | Lever | Connects |
+|---|---|---|
+| 1 | brown | SCI TX (pin 30, PD1/TDO) → ADM232 T1IN (pin 11) → PL2 |
+| 2 | red | SCI TX → transistor LED driver (R19–R21) → TX1 |
+| 3 | orange | ADM232 R1OUT (pin 12) → SCI RX (pin 29, PD0/RDI) |
+| 4 | yellow | RX1 → SCI RX (trace on the top layer; inferred) |
+
+- RS-232 (as installed): 1 and 3 ON. Fiber: 2 and 4 ON, 3 OFF (1 may stay ON). Never 3 and 4 together.
+- Protocol is unchanged on the fiber (same SCI, 9600 8N1).
+- Traced from the solder side: the switch pairs 1/2 and 3/4 are joined on the processor side; the ADM232 orientation is confirmed by its charge-pump capacitor and VCC connections. Not yet confirmed: the fiber idle polarity (check whether TX1 is lit at idle) and the RX1 trace.

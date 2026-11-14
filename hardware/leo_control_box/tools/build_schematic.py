@@ -125,12 +125,10 @@ PARTS = {
     "C47u":   ("Samsung Electro-Mechanics", "CL31A476MPHNNNE", "1276-3063-1-ND", 0.59, "10 V X5R 1206; low Digi-Key stock (123)"),
     "LED":    ("Lite-On", "LTST-C171GKT", "160-1423-1-ND", 0.15, "green, used for both indicators"),
     "FUSE":   ("Littelfuse", "1812L110/16DR", "F3485CT-ND", 0.74, "replaces obsolete Bourns MF-MSMF110-2"),
-    "DE9M":   ("NorComp", "182-009-113R531", "182-09ME-ND", 2.41, "0.318 in backset, board locks; VERIFY footprint against the NorComp drawing"),
     "HDR":    ("Sullins", "PRPC040SAAN-RC", "S1011EC-40-ND", 1.23, "1x40 breakaway strip, cut for J6 and J11"),
     "QWIIC":  ("JST", "SM04B-SRSS-TB(LF)(SN)", "455-SM04B-SRSS-TBCT-ND", 0.51, ""),
     "AHCT125": ("Texas Instruments", "SN74AHCT125DR", "296-4652-1-ND", 0.52, ""),
     "2N7002": ("onsemi", "2N7002LT1G", "2N7002LT1GOSCT-ND", 0.26, ""),
-    "MAX3232": ("Texas Instruments", "MAX3232ECDR", "296-19851-1-ND", 1.24, ""),
     "TEENSY":  ("PJRC / SparkFun", "15583 (Teensy 4.0)", "1568-15583-ND", 25.66, "owner has stock; Digi-Key stock 0 on 2026-11-13"),
     "HFBR_TX": ("Broadcom", "HFBR-1521Z", "516-2043-ND", 19.14, "owner has stock; Digi-Key backordered (alt AFBR-1521CZ 516-3584-ND)"),
     "HFBR_RX": ("Broadcom", "HFBR-2521Z", "516-2062-ND", 20.46, "owner has stock"),
@@ -150,9 +148,9 @@ def part_key(lib_id, value, dnp):
     if dnp:
         return None
     name = lib_id.split(":")[1]
-    by_name = {"74AHCT125": "AHCT125", "2N7002": "2N7002", "MAX3232": "MAX3232",
+    by_name = {"74AHCT125": "AHCT125", "2N7002": "2N7002",
                "Teensy_4.0": "TEENSY", "HFBR-1521Z": "HFBR_TX", "HFBR-2521Z": "HFBR_RX",
-               "LED": "LED", "Polyfuse": "FUSE", "DE9_Pins_MountingHoles": "DE9M",
+               "LED": "LED", "Polyfuse": "FUSE",
                "Conn_01x04": "HDR", "ISO6720FBD": "ISO", "Battery_Cell": "BAT", "Conn_01x04_MountingPin": "QWIIC", "Conn_02x10_Odd_Even": "IDC20",
                "USB_C_Receptacle_PowerOnly_6P": "USBC"}
     if name in by_name:
@@ -277,57 +275,45 @@ def build():
     # --- fiber transmitters ----------------------------------------------------------------------
     text("Fiber transmitters (HFBR-1521Z)", 170, 32)
     text("Idle = high = LED on. 10k pull-ups hold the lines idle while the Teensy is in reset. Peaking caps DNP.", 170, 37, 1.8)
-    tx = [("EHT_TX", "EHT"), ("STG_TX", "STG/VAC"), ("EO_F1", "EO F1 frame gate"), ("EO_F2", "EO F2 line gate"), ("EO_F3", "EO F3 registers")]
-    gates = [("U2", 1), ("U2", 2), ("U2", 3), ("U2", 4), ("U3", 1)]
+    tx = [("EHT_TX", "EHT"), ("STG_TX", "STG/VAC"), ("EO_F1", "EO F1 frame gate"), ("EO_F2", "EO F2 line gate"), ("EO_F3", "EO F3 registers"),
+          ("VP_TX", "VP controller (its RX1 is an HFBR-2524)")]
+    gates = [("U2", 1), ("U2", 2), ("U2", 3), ("U2", 4), ("U3", 1), ("U3", 2)]
+    tx_ref = ["U4", "U5", "U6", "U7", "U8", "U12"]
+    tx_r = [10, 11, 12, 13, 14, 15]
     gate_pins = {1: ("1", "2", "3"), 2: ("4", "5", "6"), 3: ("10", "9", "8"), 4: ("13", "12", "11")}
     for i, ((net, title), (gref, gu)) in enumerate(zip(tx, gates)):
         y = 55 + 26 * i
         text(title, 172, y - 10, 1.8)
-        two(R_, "R%d" % (10 + i), "10k", 180, y, "+3V3", net)
+        two(R_, "R%d" % tx_r[i], "10k", 180, y, "+3V3", net)
         oe, a, yo = gate_pins[gu]
         gx = 200.66
         place(T + "74AHCT125", gref, "74AHCT125", FP + "SOIC-14_3.9x8.7mm_P1.27mm", gx, y, {oe: "GND", a: net, yo: ""}, unit=gu)
         # MOSFET gate pin sits exactly on the buffer output pin (gx + 7.62 = qx - 5.08)
         place(T + "2N7002", "Q%d" % (1 + i), "2N7002", FP + "SOT-23", gx + 12.7, y, {"1": "", "2": "GND", "3": net + "_K"})
-        place(T + "HFBR-1521Z", "U%d" % (4 + i), "HFBR-1521Z", FP + "AGILENT_HFBR-152x", 255, y,
+        place(T + "HFBR-1521Z", tx_ref[i], "HFBR-1521Z", FP + "AGILENT_HFBR-152x", 255, y,
               {"1": net + "_A", "2": net + "_K", "5": "GND", "6": "GND"})
         two(R_, "R%d" % (20 + i), "56", 280, y, "+5V", net + "_A")
         two(C_, "C%d" % (20 + i), "peaking", 292, y, "+5V", net + "_A", dnp=True)
     # unused gates of U3: input low, output disabled
-    for j, gu in enumerate((2, 3, 4)):
+    for j, gu in enumerate((3, 4)):
         oe, a, yo = gate_pins[gu]
-        place(T + "74AHCT125", "U3", "74AHCT125", FP + "SOIC-14_3.9x8.7mm_P1.27mm", 200 + 25 * j, 190, {oe: "+5V", a: "GND", yo: None}, unit=gu)
+        place(T + "74AHCT125", "U3", "74AHCT125", FP + "SOIC-14_3.9x8.7mm_P1.27mm", 200 + 25 * j, 214, {oe: "+5V", a: "GND", yo: None}, unit=gu)
     for k, ref in enumerate(("U2", "U3")):
-        place(T + "74AHCT125", ref, "74AHCT125", FP + "SOIC-14_3.9x8.7mm_P1.27mm", 290 + 25 * k, 190, {"14": "+5V", "7": "GND"}, unit=5)
-        two(C_, "C%d" % (30 + k), "100n", 300 + 25 * k, 190, "+5V", "GND")
+        place(T + "74AHCT125", ref, "74AHCT125", FP + "SOIC-14_3.9x8.7mm_P1.27mm", 260 + 25 * k, 214, {"14": "+5V", "7": "GND"}, unit=5)
+        two(C_, "C%d" % (30 + k), "100n", 270 + 25 * k, 214, "+5V", "GND")
 
     # --- fiber receivers -------------------------------------------------------------------------
-    text("Fiber receivers (HFBR-2521Z)", 170, 215)
-    text("Open-collector output pulled up to 3.3 V (Teensy is not 5 V tolerant); internal RL unused.", 170, 220, 1.8)
-    rx = [("EHT_RX", "EHT"), ("STG_RX", "STG/VAC"), ("EO_F4", "EO F4 replies")]
+    text("Fiber receivers (HFBR-2521Z)", 170, 241)
+    text("Open-collector output pulled up to 3.3 V (Teensy is not 5 V tolerant); internal RL unused.", 170, 246, 1.8)
+    rx = [("EHT_RX", "EHT"), ("STG_RX", "STG/VAC"), ("EO_F4", "EO F4 replies"), ("VP_RX", "VP controller (its TX1 is an HFBR-1524)")]
+    rx_ref = ["U9", "U10", "U11", "U14"]
     for i, (net, title) in enumerate(rx):
-        y = 232 + 24 * i
+        y = 258 + 24 * i
         text(title, 172, y - 9, 1.8)
         two(C_, "C%d" % (40 + i), "100n", 205, y, "+5V", "GND")
-        place(T + "HFBR-2521Z", "U%d" % (9 + i), "HFBR-2521Z", FP + "AGILENT_HFBR-252x", 230, y,
+        place(T + "HFBR-2521Z", rx_ref[i], "HFBR-2521Z", FP + "AGILENT_HFBR-252x", 230, y,
               {"3": "+5V", "2": "GND", "1": net, "4": None, "5": "GND", "6": "GND"})
         two(R_, "R%d" % (30 + i), "1k", 255, y, "+3V3", net)
-
-    # --- VP RS-232 -------------------------------------------------------------------------------
-    text("VP controller RS-232", 340, 32)
-    text("DTE wiring, like the PC's COM2", 340, 37, 1.8)
-    place(T + "MAX3232", "U12", "MAX3232", FP + "SOIC-16_3.9x9.9mm_P1.27mm", 370, 80,
-          {"1": "VP_C1P", "3": "VP_C1N", "4": "VP_C2P", "5": "VP_C2N", "2": "VP_VSP", "6": "VP_VSN",
-           "11": "VP_TX", "12": "VP_RX", "14": "VP_TXD_232", "13": "VP_RXD_232",
-           "10": "GND", "9": None, "8": None, "7": None, "16": "+3V3", "15": "GND"})
-    two(C_, "C50", "100n", 335, 50, "VP_C1P", "VP_C1N")
-    two(C_, "C51", "100n", 345, 50, "VP_C2P", "VP_C2N")
-    two(C_, "C52", "100n", 405, 55, "VP_VSP", "GND")
-    two(C_, "C53", "100n", 415, 55, "GND", "VP_VSN")
-    two(C_, "C54", "100n", 425, 55, "+3V3", "GND")
-    place("Connector:DE9_Pins_MountingHoles", "J2", "VP DE-9 male",
-          FP + "DSUB-9_Pins_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm",
-          440, 95, {"2": "VP_RXD_232", "3": "VP_TXD_232", "5": "GND", "SH": "GND"})
 
     # --- I2C -------------------------------------------------------------------------------------
     # Only a spare I2C expansion port remains (no DAC, ADC or knob on this board).
