@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "leo_control_box")(type "KiCad")(uri "${KIPRJMOD}/leo_control_box.kicad_sym")(options "")(descr "LEO 438VP control box: Teensy 4.0, HFBR fiber parts, copied stock parts"))
+)

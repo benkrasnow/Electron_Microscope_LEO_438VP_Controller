@@ -1,0 +1,14 @@
+# Raw scope waveforms: 6.8 GB, never edited (decoded _ch3.txt, .png and logs are tracked)
+scope_captures/*.npz
+
+# Python
+__pycache__/
+*.pyc
+
+# KiCad backups, locks and caches
+*-backups/
+*.lck
+fp-info-cache
+_autosave-*
+*.kicad_prl
+~*.kicad_*
