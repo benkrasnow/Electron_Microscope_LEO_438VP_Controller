@@ -12,3 +12,6 @@ fp-info-cache
 _autosave-*
 *.kicad_prl
 ~*.kicad_*
+
+# KiCad local history (its own git repo)
+.history/
