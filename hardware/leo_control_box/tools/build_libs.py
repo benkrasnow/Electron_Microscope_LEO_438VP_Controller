@@ -195,6 +195,7 @@ STOCK_FP = {
     "Package_TO_SOT_SMD": ["SOT-23"],
     "Connector_Dsub": [DSUB],
     "Connector_JST": ["JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"],
+    "Connector_IDC": ["IDC-Header_2x10_P2.54mm_Vertical"],
     "Connector_PinHeader_2.54mm": ["PinHeader_1x03_P2.54mm_Vertical"],
     "TerminalBlock_Phoenix": ["TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal"],
     "Resistor_SMD": ["R_0805_2012Metric"],

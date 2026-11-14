@@ -134,6 +134,10 @@ PARTS = {
     "TEENSY":  ("PJRC / SparkFun", "15583 (Teensy 4.0)", "1568-15583-ND", 25.66, "owner has stock; Digi-Key stock 0 on 2026-11-13"),
     "HFBR_TX": ("Broadcom", "HFBR-1521Z", "516-2043-ND", 19.14, "owner has stock; Digi-Key backordered (alt AFBR-1521CZ 516-3584-ND)"),
     "HFBR_RX": ("Broadcom", "HFBR-2521Z", "516-2062-ND", 20.46, "owner has stock"),
+    "IDC20":   ("Sullins", "SBH11-PBPC-D10-ST-BK", "S9172-ND", 0.46, "2x10 shrouded box header for the display cable"),
+    "LCD":     ("Newhaven Display", "NHD-4.3-800480FT-CSXP-CTP", "757-NHD-4.3-800480FT-CSXP-CTP-ND", 75.14,
+                "OFF-BOARD: 4.3 in 800x480 IPS EVE (FT813) display, capacitive touch"),
+    "CABLE20": ("Adafruit", "5294", "1528-5294-ND", 1.95, "OFF-BOARD: 2x10 IDC socket-to-socket ribbon cable, 1 ft"),
 }
 
 
@@ -144,9 +148,11 @@ def part_key(lib_id, value, dnp):
     by_name = {"74AHCT125": "AHCT125", "2N7002": "2N7002", "MAX3232": "MAX3232",
                "Teensy_4.0": "TEENSY", "HFBR-1521Z": "HFBR_TX", "HFBR-2521Z": "HFBR_RX",
                "LED": "LED", "Polyfuse": "FUSE", "Conn_01x02": "TB2", "DE9_Pins_MountingHoles": "DE9M",
-               "Conn_01x03": "HDR", "Conn_01x04_MountingPin": "QWIIC"}
+               "Conn_01x03": "HDR", "Conn_01x04_MountingPin": "QWIIC", "Conn_02x10_Odd_Even": "IDC20"}
     if name in by_name:
         return by_name[name]
+    if name == "MountingHole":                         # placeholder symbols for off-board items
+        return {"Display NHD-4.3": "LCD", "Display cable": "CABLE20"}[value]
     if name == "R":
         return {"10k": "R10k", "1k": "R1k", "2.2k": "R2k2", "56": "R56"}[value]
     if name == "C":
@@ -154,14 +160,15 @@ def part_key(lib_id, value, dnp):
     return None
 
 
-def instance(lib_id, ref, value, fp, x, y, unit=1, dnp=False, hide_ref=False):
+def instance(lib_id, ref, value, fp, x, y, unit=1, dnp=False, hide_ref=False, on_board=True):
     use(lib_id)
     props = PINS[lib_id + "#props"]
     rx, ry = props.get("Reference", (0, 5))
     vx, vy = props.get("Value", (0, -5))
     pins = [p for p in PINS[lib_id] if p[0] in (str(unit), "0")]
-    s = ('\t(symbol (lib_id "%s") (at %s %s 0) (unit %d) (exclude_from_sim no) (in_bom %s) (on_board yes) (dnp %s) (uuid "%s")\n'
-         % (lib_id, fmt(x), fmt(y), unit, "no" if ref.startswith("#") else "yes", "yes" if dnp else "no", u()))
+    s = ('\t(symbol (lib_id "%s") (at %s %s 0) (unit %d) (exclude_from_sim no) (in_bom %s) (on_board %s) (dnp %s) (uuid "%s")\n'
+         % (lib_id, fmt(x), fmt(y), unit, "no" if ref.startswith("#") else "yes", "yes" if on_board else "no",
+            "yes" if dnp else "no", u()))
     s += '\t\t(property "Reference" "%s" (at %s %s 0) (effects (font (size 1.27 1.27))%s))\n' % (ref, fmt(x + rx), fmt(y - ry), " (hide yes)" if hide_ref else "")
     s += '\t\t(property "Value" "%s" (at %s %s 0) (effects (font (size 1.27 1.27))))\n' % (value, fmt(x + vx), fmt(y - vy))
     s += '\t\t(property "Footprint" "%s" (at %s %s 0) (effects (font (size 1.27 1.27)) (hide yes)))\n' % (fp, fmt(x), fmt(y))
@@ -242,7 +249,8 @@ def build():
     text("Controller", 20, 75)
     tpins = {"0": "EHT_RX", "1": "EHT_TX", "2": "EO_F3", "3": "EO_F4", "4": "EO_F1", "5": "EO_F2",
              "6": "SYNC_LINE_T", "7": "STG_RX", "8": "STG_TX", "9": "SYNC_FRAME_T",
-             "14": "VP_TX", "15": "VP_RX", "18": "SDA", "19": "SCL", "23": "STATUS_LED"}
+             "14": "VP_TX", "15": "VP_RX", "18": "SDA", "19": "SCL", "23": "STATUS_LED",
+             "10": "LCD_CS", "11": "LCD_MOSI_T", "12": "LCD_MISO", "13": "LCD_SCK_T", "21": "LCD_PD", "22": "LCD_INT"}
     left = ["GND"] + [str(i) for i in range(13)]
     right = [str(i) for i in range(13, 24)] + ["3V3", "GND", "VIN"]
     conns = {}
@@ -252,7 +260,7 @@ def build():
         elif name == "VIN": conns[str(pad)] = "+5V"
         else: conns[str(pad)] = tpins.get(name)
     place(T + "Teensy_4.0", "U1", "Teensy 4.0", FP + "Teensy_4.0", 60, 110, conns)
-    text("Spare: 10-13 (SPI), 16/17 (UART4/I2C1), 20/21 (UART5), 22", 20, 140, 1.8)
+    text("Spare: 16/17 (UART4/I2C1), 20", 20, 140, 1.8)
 
     # --- fiber transmitters ----------------------------------------------------------------------
     text("Fiber transmitters (HFBR-1521Z)", 170, 32)
@@ -324,6 +332,24 @@ def build():
     two(R_, "R51", "56", 350, 315, "SYNC_FRAME_T", "SYNC_FRAME")
     place("Connector_Generic:Conn_01x03", "J6", "OBI sync", FP + "PinHeader_1x03_P2.54mm_Vertical", 385, 315,
           {"1": "SYNC_LINE", "2": "SYNC_FRAME", "3": "GND"})
+
+    # --- touch display (Newhaven NHD-4.3-800480FT-CSXP-CTP, FT813 EVE) -----------------------------
+    text("Touch display (NHD-4.3, FT813)", 20, 160)
+    text("2x10 IDC ribbon, pin n = pin n. VDD 3.3 V 40 mA; backlight 240 mA from +5V.", 20, 165, 1.8)
+    text("/PD pulled low: display stays off until firmware enables it.", 20, 169, 1.8)
+    two(R_, "R60", "56", 45, 185, "LCD_SCK_T", "LCD_SCK")
+    two(R_, "R61", "56", 55, 185, "LCD_MOSI_T", "LCD_MOSI")
+    two(R_, "R62", "10k", 65, 185, "+3V3", "LCD_CS")
+    two(R_, "R63", "10k", 75, 185, "+3V3", "LCD_INT")
+    two(R_, "R64", "10k", 85, 185, "LCD_PD", "GND")
+    idc = {"1": "+3V3", "2": "GND", "3": "LCD_SCK", "4": "LCD_MISO", "5": "LCD_MOSI", "6": "LCD_CS",
+           "7": "LCD_INT", "8": "LCD_PD", "9": None, "10": None, "11": None, "12": None, "13": None,
+           "14": None, "15": None, "16": None, "17": "+5V", "18": "+5V", "19": "GND", "20": "GND"}
+    place("Connector_Generic:Conn_02x10_Odd_Even", "J9", "DISPLAY", FP + "IDC-Header_2x10_P2.54mm_Vertical", 125, 195, idc)
+    two(C_, "C62", "100n", 155, 185, "+3V3", "GND")
+    two(CB, "C63", "47u 10V", 165, 185, "+5V", "GND")
+    instance("Mechanical:MountingHole", "X1", "Display NHD-4.3", "", 95, 215, on_board=False)
+    instance("Mechanical:MountingHole", "X2", "Display cable", "", 115, 215, on_board=False)
 
 
 def main():

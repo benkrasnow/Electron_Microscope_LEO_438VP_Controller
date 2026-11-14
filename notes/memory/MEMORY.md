@@ -3,3 +3,4 @@
 - [Scan fiber status](scan-fiber-status.md) — EO link decoded (spec rev 1.1 + system datasheet, 2026-11-13); next: replacement IP board design
 - [Replacement plan](replacement-plan-obi-glasgow.md) — OBI/Glasgow for imaging + separate MCU control box enforcing safety; HFBR fibers; no OBI Python UI
 - [Git version history](git-version-history.md) — project folder is a local git repo; commit after changes, never push
+- [Digi-Key search: sort by stock](digikey-search-sort-by-stock.md) — sort by quantity available desc; in stock, not Marketplace, small qty

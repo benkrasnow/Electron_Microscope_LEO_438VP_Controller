@@ -1,6 +1,6 @@
 # LEO 438VP control box (KiCad 10 project)
 
-Microcontroller board that owns the SEM's machine state and safety, independent of the PC: EHT and stage/vacuum fiber links, VP RS-232, the EO board's four fibers (register link plus the internal-scan backup), a spare I²C expansion port, and sync outputs to the OBI. (PMT signal and gain are handled by separate hardware.) Interface specs: `../../specifications/`.
+Microcontroller board that owns the SEM's machine state and safety, independent of the PC: EHT and stage/vacuum fiber links, VP RS-232, the EO board's four fibers (register link plus the internal-scan backup), a spare I²C expansion port, sync outputs to the OBI, and a 2×10 IDC header for a 4.3″ 800×480 touch display (Newhaven NHD-4.3-800480FT-CSXP-CTP, FT813 EVE). (PMT signal and gain are handled by separate hardware.) Interface specs: `../../specifications/`.
 
 Status (2026-11-13): **schematic rev 0.1 drawn, ERC clean (0 violations).** PCB not started; the board outline is still the 160 × 100 mm template.
 
@@ -33,6 +33,8 @@ Passives (R, C, LED, fuse) and generic connectors use KiCad's stock `Device` and
 | 1× | **DE-9 male** (the VP link expects a PC-style DTE port) | `DE9_Pins_MountingHoles` | DSUB-9 pins, horizontal | stock |
 | 2× | Qwiic / STEMMA-QT connector (JST SH 4-pin: GND, 3V3, SDA, SCL) spare I²C expansion | `Conn_01x04_MountingPin` | JST SH SM04B | stock |
 | 1× | OBI sync header: GND, LINE_SYNC, FRAME_SYNC | `Conn_01x03` | 1 × 3 2.54 mm | stock |
+| 1× | Display header, 2×10 shrouded box header (Sullins SBH11-PBPC-D10-ST-BK) | `Conn_02x10_Odd_Even` | IDC-Header_2x10_P2.54mm_Vertical | stock |
+| off-board | Newhaven NHD-4.3-800480FT-CSXP-CTP display + Adafruit 5294 2×10 IDC cable (1 ft) | `MountingHole` placeholders X1/X2, in BOM, not on the board | — | — |
 | 1× | 5 V input terminal block + 1812 PTC fuse + bulk capacitor | `Conn_01x02`, `Polyfuse`, `C` | Phoenix MKDS 5.08, Fuse 1812, C 1206 | stock |
 | — | R / C / LED 0805 | `R`, `C`, `LED` | 0805 | stock |
 
@@ -58,7 +60,10 @@ Teensy 4.x pins are **3.3 V only (not 5 V tolerant)**: every 5 V signal must be 
 | 6, 9 | GPIO out (33 Ω) | OBI sync header: LINE_SYNC, FRAME_SYNC |
 | 18 / 19 | I²C SDA / SCL (2.2 kΩ to 3.3 V) | Qwiic expansion connectors J3 / J4 |
 | 23 | GPIO out | status LED |
-| 10–13, 16, 17, 20, 21, 22 | spare | SPI / UART4 / UART5 / analog |
+| 10 / 11 / 12 / 13 | SPI CS / MOSI / MISO / SCK | display J9 (CS 10k pull-up; SCK and MOSI through 56 Ω series resistors) |
+| 21 | GPIO out | display /PD (10k pull-down: off until enabled) |
+| 22 | GPIO in | display /INT (10k pull-up) |
+| 16, 17, 20 | spare | SPI / UART4 / UART5 / analog |
 
 ## Circuit notes
 
@@ -109,3 +114,26 @@ Every part carries `Manufacturer`, `MPN`, `DigiKey_PN`, `Unit_Price_USD` and `BO
 - **Consolidation:** four resistor values (10k, 1k, 2.2k, 56 Ω; the sync series resistors moved from 33 to 56 Ω); one 100 nF part for all 11 decoupling/charge-pump capacitors; one green LED for both indicators; one 1 × 40 header strip, cut for J6.
 - **DE-9:** NorComp 182-009-113R531 (0.318 in backset, board locks). The footprint was changed to `DSUB-9_Pins_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm`; **verify pin-row offset and board-lock hole size against the NorComp drawing before layout.**
 - Peaking capacitors C20–C24 are DNP (no part chosen).
+
+## Touch display (added 2026-11-14)
+
+Newhaven **NHD-4.3-800480FT-CSXP-CTP**: 4.3″ 800×480 IPS, capacitive touch, FT813 EVE controller, SPI up to 30 MHz (datasheet rev 8, 09/16/2026). It connects through its 2×10 2.54 mm IDC box header (CN1) and a straight-through 20-way ribbon to J9 on this board.
+
+| J9 / CN1 pin | Signal | Connection |
+|---|---|---|
+| 1 | VDD (3.0–3.5 V, 40 mA) | +3V3 (Teensy regulator) |
+| 2, 19, 20 | GND | GND |
+| 3 | SCK | Teensy 13 via R60 56 Ω |
+| 4 | MISO / IO1 | Teensy 12 |
+| 5 | MOSI / IO0 | Teensy 11 via R61 56 Ω |
+| 6 | /CS | Teensy 10, R62 10k pull-up |
+| 7 | /INT | Teensy 22, R63 10k pull-up |
+| 8 | /PD | Teensy 21, R64 10k pull-down |
+| 9 | AUDIO_L (PWM) | not used |
+| 10, 15, 16 | NC | — |
+| 11–14 | GPIO0–3 (IO2/IO3 for quad SPI) | not used (single-SPI mode) |
+| 17, 18 | VBL backlight (2.8–5.5 V; 240 mA at 5 V, 520 mA at 3.3 V) | +5V |
+
+Decoupling at J9: C62 100 nF (+3V3), C63 47 µF (+5V). Estimated +5V load with the display: Teensy ~100 mA + five transmitter LEDs ~275 mA (lit while idle) + receivers and logic ~50 mA + backlight 240 mA ≈ 0.65 A, within F1's 1.1 A hold rating. The +3V3 rail (Teensy regulator) gains 40 mA.
+
+Costs: board parts about **$15.47**; display $75.14 and cable $1.95 off-board.
