@@ -13,7 +13,9 @@ Plan (stated 2026-11-13): use the Open Beam Interface (https://github.com/nanogr
 
 Verified 2026-11-13: OBI analog board uses only the Glasgow LVDS connector; Port B fully free, Port A free except OBI scan_enable (A0); the user also wants internal digital scan (F1/F2) as a backup. Pin plan: design/GLASGOW_PIN_PLAN.md.
 
-Decision 2026-11-13: use a separate microcontroller control box (Teensy 4.1 / RP2350 class) for EHT, stage/vacuum, VP, EO fibers, I2C knobs and PMT gain, enforcing safety and machine state independently of the PC; OBI/Glasgow stays for imaging. EO internal scan kept as a backup, optionally synced to OBI via F2 into a spare OBI pin (needs OBI gateware support, not stock).
+Decision 2026-11-13: use a separate microcontroller control box (Teensy 4.1 / RP2350 class) for EHT, stage/vacuum, VP and EO fibers, enforcing safety and machine state independently of the PC; OBI/Glasgow stays for imaging. EO internal scan kept as a backup, optionally synced to OBI via F2 into a spare OBI pin (needs OBI gateware support, not stock).
+
+Update 2026-11-14: the control box (Teensy 4.0, hardware/leo_control_box) does NOT handle the PMT signal or its gain (separate hardware does), and has no knob/lever inputs; only a spare I2C Qwiic port remains.
 
 **Why:** shapes every design decision for the replacement controller.
 

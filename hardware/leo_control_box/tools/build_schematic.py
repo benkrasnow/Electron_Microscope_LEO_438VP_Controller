@@ -126,13 +126,11 @@ PARTS = {
     "FUSE":   ("Littelfuse", "1812L110/16DR", "F3485CT-ND", 0.74, "replaces obsolete Bourns MF-MSMF110-2"),
     "TB2":    ("Phoenix Contact", "1729128", "277-1247-ND", 0.95, "MKDS 1,5/2-5,08; replaces out-of-stock 1715721"),
     "DE9M":   ("NorComp", "182-009-113R531", "182-09ME-ND", 2.41, "0.318 in backset, board locks; VERIFY footprint against the NorComp drawing"),
-    "HDR":    ("Sullins", "PRPC040SAAN-RC", "S1011EC-40-ND", 1.23, "1x40 breakaway strip; one strip covers J5-J8 (cut to length)"),
+    "HDR":    ("Sullins", "PRPC040SAAN-RC", "S1011EC-40-ND", 1.23, "1x40 breakaway strip, cut for J6"),
     "QWIIC":  ("JST", "SM04B-SRSS-TB(LF)(SN)", "455-SM04B-SRSS-TBCT-ND", 0.51, ""),
     "AHCT125": ("Texas Instruments", "SN74AHCT125DR", "296-4652-1-ND", 0.52, ""),
     "2N7002": ("onsemi", "2N7002LT1G", "2N7002LT1GOSCT-ND", 0.26, ""),
     "MAX3232": ("Texas Instruments", "MAX3232ECDR", "296-19851-1-ND", 1.24, ""),
-    "MCP4728": ("Microchip", "MCP4728-E/UN", "MCP4728-E/UN-ND", 2.50, ""),
-    "ADS1115": ("Texas Instruments", "ADS1115IDGSR", "296-38849-1-ND", 5.28, ""),
     "TEENSY":  ("PJRC / SparkFun", "15583 (Teensy 4.0)", "1568-15583-ND", 25.66, "owner has stock; Digi-Key stock 0 on 2026-11-13"),
     "HFBR_TX": ("Broadcom", "HFBR-1521Z", "516-2043-ND", 19.14, "owner has stock; Digi-Key backordered (alt AFBR-1521CZ 516-3584-ND)"),
     "HFBR_RX": ("Broadcom", "HFBR-2521Z", "516-2062-ND", 20.46, "owner has stock"),
@@ -143,10 +141,10 @@ def part_key(lib_id, value, dnp):
     if dnp:
         return None
     name = lib_id.split(":")[1]
-    by_name = {"74AHCT125": "AHCT125", "2N7002": "2N7002", "MAX3232": "MAX3232", "MCP4728": "MCP4728",
-               "ADS1115IDGS": "ADS1115", "Teensy_4.0": "TEENSY", "HFBR-1521Z": "HFBR_TX", "HFBR-2521Z": "HFBR_RX",
+    by_name = {"74AHCT125": "AHCT125", "2N7002": "2N7002", "MAX3232": "MAX3232",
+               "Teensy_4.0": "TEENSY", "HFBR-1521Z": "HFBR_TX", "HFBR-2521Z": "HFBR_RX",
                "LED": "LED", "Polyfuse": "FUSE", "Conn_01x02": "TB2", "DE9_Pins_MountingHoles": "DE9M",
-               "Conn_01x03": "HDR", "Conn_01x05": "HDR", "Conn_01x06": "HDR", "Conn_01x04_MountingPin": "QWIIC"}
+               "Conn_01x03": "HDR", "Conn_01x04_MountingPin": "QWIIC"}
     if name in by_name:
         return by_name[name]
     if name == "R":
@@ -244,7 +242,7 @@ def build():
     text("Controller", 20, 75)
     tpins = {"0": "EHT_RX", "1": "EHT_TX", "2": "EO_F3", "3": "EO_F4", "4": "EO_F1", "5": "EO_F2",
              "6": "SYNC_LINE_T", "7": "STG_RX", "8": "STG_TX", "9": "SYNC_FRAME_T",
-             "14": "VP_TX", "15": "VP_RX", "18": "SDA", "19": "SCL", "22": "KNOB_INT", "23": "STATUS_LED"}
+             "14": "VP_TX", "15": "VP_RX", "18": "SDA", "19": "SCL", "23": "STATUS_LED"}
     left = ["GND"] + [str(i) for i in range(13)]
     right = [str(i) for i in range(13, 24)] + ["3V3", "GND", "VIN"]
     conns = {}
@@ -254,7 +252,7 @@ def build():
         elif name == "VIN": conns[str(pad)] = "+5V"
         else: conns[str(pad)] = tpins.get(name)
     place(T + "Teensy_4.0", "U1", "Teensy 4.0", FP + "Teensy_4.0", 60, 110, conns)
-    text("Spare: 10-13 (SPI), 16/17 (UART4/I2C1), 20/21 (UART5)", 20, 140, 1.8)
+    text("Spare: 10-13 (SPI), 16/17 (UART4/I2C1), 20/21 (UART5), 22", 20, 140, 1.8)
 
     # --- fiber transmitters ----------------------------------------------------------------------
     text("Fiber transmitters (HFBR-1521Z)", 170, 32)
@@ -312,27 +310,13 @@ def build():
           440, 95, {"2": "VP_RXD_232", "3": "VP_TXD_232", "5": "GND", "SH": "GND"})
 
     # --- I2C -------------------------------------------------------------------------------------
-    text("I2C (3.3 V): PMT gain DAC, lever ADC, knob modules", 330, 130)
+    # Only a spare I2C expansion port remains (no DAC, ADC or knob on this board).
+    text("I2C expansion (3.3 V, spare)", 330, 130)
     two(R_, "R40", "2.2k", 335, 145, "+3V3", "SDA")
     two(R_, "R41", "2.2k", 345, 145, "+3V3", "SCL")
-    two(R_, "R42", "10k", 355, 145, "+3V3", "KNOB_INT")
-    place(T + "MCP4728", "U13", "MCP4728 (0x60)", FP + "MSOP-10_3x3mm_P0.5mm", 385, 175,
-          {"1": "+3V3", "10": "GND", "2": "SCL", "3": "SDA", "4": "GND", "5": None,
-           "6": "PMT_GAIN", "7": "PMT_OFFSET", "8": None, "9": None})
-    two(C_, "C60", "100n", 405, 160, "+3V3", "GND")
-    place("Connector_Generic:Conn_01x03", "J7", "PMT amp", FP + "PinHeader_1x03_P2.54mm_Vertical", 430, 175,
-          {"1": "PMT_GAIN", "2": "PMT_OFFSET", "3": "GND"})
-    place(T + "ADS1115IDGS", "U14", "ADS1115 (0x48)", FP + "MSOP-10_3x3mm_P0.5mm", 385, 220,
-          {"8": "+3V3", "3": "GND", "1": "GND", "2": None, "4": "LEVER0", "5": "LEVER1", "6": "LEVER2", "7": "LEVER3",
-           "9": "SDA", "10": "SCL"})
-    two(C_, "C61", "100n", 405, 205, "+3V3", "GND")
-    place("Connector_Generic:Conn_01x06", "J8", "levers", FP + "PinHeader_1x06_P2.54mm_Vertical", 350, 220,
-          {"1": "+3V3", "2": "LEVER0", "3": "LEVER1", "4": "LEVER2", "5": "LEVER3", "6": "GND"})
     for k, ref in enumerate(("J3", "J4")):
         place("Connector_Generic_MountingPin:Conn_01x04_MountingPin", ref, "Qwiic", FP + "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal",
-              440 + 22 * k, 250, {"1": "GND", "2": "+3V3", "3": "SDA", "4": "SCL", "MP": "GND"})
-    place("Connector_Generic:Conn_01x05", "J5", "knobs", FP + "PinHeader_1x05_P2.54mm_Vertical", 440, 280,
-          {"1": "GND", "2": "+3V3", "3": "SDA", "4": "SCL", "5": "KNOB_INT"})
+              370 + 22 * k, 150, {"1": "GND", "2": "+3V3", "3": "SDA", "4": "SCL", "MP": "GND"})
 
     # --- OBI sync --------------------------------------------------------------------------------
     text("Sync to OBI (Glasgow port, 3.3 V)", 330, 300)

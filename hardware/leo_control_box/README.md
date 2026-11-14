@@ -1,6 +1,6 @@
 # LEO 438VP control box (KiCad 10 project)
 
-Microcontroller board that owns the SEM's machine state and safety, independent of the PC: EHT and stage/vacuum fiber links, VP RS-232, the EO board's four fibers (register link plus the internal-scan backup), I²C for knobs/levers and the PMT gain DAC, and sync outputs to the OBI. Interface specs: `../../specifications/`.
+Microcontroller board that owns the SEM's machine state and safety, independent of the PC: EHT and stage/vacuum fiber links, VP RS-232, the EO board's four fibers (register link plus the internal-scan backup), a spare I²C expansion port, and sync outputs to the OBI. (PMT signal and gain are handled by separate hardware.) Interface specs: `../../specifications/`.
 
 Status (2026-11-13): **schematic rev 0.1 drawn, ERC clean (0 violations).** PCB not started; the board outline is still the 160 × 100 mm template.
 
@@ -31,17 +31,12 @@ Passives (R, C, LED, fuse) and generic connectors use KiCad's stock `Device` and
 | 5× | **2N7002** low-side LED switch, one per transmitter | `2N7002` | SOT-23 | stock |
 | 1× | **MAX3232** RS-232 transceiver, 3.3 V (VP controller) | `MAX3232` | SOIC-16 | stock |
 | 1× | **DE-9 male** (the VP link expects a PC-style DTE port) | `DE9_Pins_MountingHoles` | DSUB-9 pins, horizontal | stock |
-| 1× | **MCP4728** quad 12-bit I²C DAC: PMT gain (+ offset, 2 spare) | `MCP4728` | MSOP-10 | stock |
-| 1× | **ADS1115** 16-bit I²C ADC for analog levers (optional fit) | `ADS1115IDGS` | MSOP-10 | stock |
-| 2× | Qwiic / STEMMA-QT connector (JST SH 4-pin: GND, 3V3, SDA, SCL) for I²C encoder modules | `Conn_01x04_MountingPin` | JST SH SM04B | stock |
-| 1× | Lever header: 3V3, AIN0–3, GND | `Conn_01x06` | 1 × 6 2.54 mm | stock |
-| 1× | PMT amplifier header: GAIN, OFFSET, GND | `Conn_01x03` | 1 × 3 2.54 mm | stock |
-| 1× | Knob header: GND, 3V3, SDA, SCL, INT | `Conn_01x05` | 1 × 5 2.54 mm | stock |
+| 2× | Qwiic / STEMMA-QT connector (JST SH 4-pin: GND, 3V3, SDA, SCL) spare I²C expansion | `Conn_01x04_MountingPin` | JST SH SM04B | stock |
 | 1× | OBI sync header: GND, LINE_SYNC, FRAME_SYNC | `Conn_01x03` | 1 × 3 2.54 mm | stock |
 | 1× | 5 V input terminal block + 1812 PTC fuse + bulk capacitor | `Conn_01x02`, `Polyfuse`, `C` | Phoenix MKDS 5.08, Fuse 1812, C 1206 | stock |
 | — | R / C / LED 0805 | `R`, `C`, `LED` | 0805 | stock |
 
-Knob modules sit off-board on the I²C cable (e.g. DuPPa I2C Encoder V2.1, or Adafruit seesaw rotary encoder boards).
+No DAC, ADC or knob on this board (removed 2026-11-14: the PMT amplifier and its gain are handled by separate hardware; a focus knob was not chosen).
 
 ## Teensy 4.0 vs 4.1
 
@@ -61,10 +56,9 @@ Teensy 4.x pins are **3.3 V only (not 5 V tolerant)**: every 5 V signal must be 
 | 4 | timer / GPIO | EO F1 frame gate (internal-scan backup) |
 | 5 | timer / GPIO | EO F2 line gate (internal-scan backup) |
 | 6, 9 | GPIO out (33 Ω) | OBI sync header: LINE_SYNC, FRAME_SYNC |
-| 18 / 19 | I²C SDA / SCL (2.2 kΩ to 3.3 V) | MCP4728, ADS1115, knob connectors |
-| 22 | GPIO in | knob interrupt (INT, active low) |
+| 18 / 19 | I²C SDA / SCL (2.2 kΩ to 3.3 V) | Qwiic expansion connectors J3 / J4 |
 | 23 | GPIO out | status LED |
-| 10–13, 16, 17, 20, 21 | spare | SPI / UART4 / UART5 / analog |
+| 10–13, 16, 17, 20, 21, 22 | spare | SPI / UART4 / UART5 / analog |
 
 ## Circuit notes
 
@@ -80,16 +74,15 @@ HFBR-2521Z VCC from +5 V, with the decoupling/filter network recommended in the 
 MAX3232 at 3.3 V with 4 × 0.1 µF charge-pump capacitors plus bypass. Wire it as a DTE port like the PC's COM2: T1OUT → DE-9 pin 3 (TXD), DE-9 pin 2 (RXD) → R1IN, pin 5 GND. Only TXD/RXD were ever used.
 
 **I²C.**
-3.3 V bus with 2.2 kΩ pull-ups. Planned addresses: MCP4728 0x60, ADS1115 0x48. Encoder modules are address-configurable. The MCP4728 must run at **3.3 V** to stay I²C-compatible with the Teensy. Its outputs therefore span 0–2.048 V (internal reference, gain 1) or 0–3.3 V. Check the PMT amplifier's gain-control input range; scale with an op-amp if it needs more.
+3.3 V bus with 2.2 kΩ pull-ups on two Qwiic sockets, kept as a spare expansion port (no devices on board).
 
 **Power.**
-5 V from the SEM side (terminal block) → PTC fuse → +5 V rail (HFBR parts, AHCT drivers, Teensy VIN). The Teensy's 3.3 V regulator feeds the MAX3232, the I²C parts and the pull-ups (it can supply ~250 mA).
+5 V from the SEM side (terminal block) → PTC fuse → +5 V rail (HFBR parts, AHCT drivers, Teensy VIN). The Teensy's 3.3 V regulator feeds the MAX3232 and the pull-ups (it can supply ~250 mA).
 
 ## Before layout: verify against datasheets
 
 - HFBR-1521Z / HFBR-2521Z pin numbering (symbol pins 1–4; pads 5/6 are the mounting posts), the recommended LED drive current and peaking network, and the receiver filter network (Broadcom AV02-3283EN / AV02-1501EN).
 - Teensy 4.0 footprint dimensions against the PJRC drawing (pad 1 = GND at the USB end; right row from the far end: 13 … 23, 3V3, GND, VIN), and the FlexIO pin assignments.
-- PMT amplifier gain-control voltage range.
 - VP controller DE-9 gender and pinout on the existing cable.
 
 ## Schematic reference designators
@@ -101,18 +94,18 @@ MAX3232 at 3.3 V with 4 × 0.1 µF charge-pump capacitors plus bypass. Wire it a
 | Fiber TX (EHT, STG, EO F1, F2, F3) | R10–R14 pull-ups, U2A–D / U3A buffers, Q1–Q5, U4–U8 HFBR-1521Z, R20–R24 LED current (56 Ω), C20–C24 peaking (DNP); U3B–D unused (input low, output disabled); U2E/U3E power + C30/C31 |
 | Fiber RX (EHT, STG, EO F4) | U9–U11 HFBR-2521Z, C40–C42, R30–R32 pull-ups (1 k to 3.3 V) |
 | VP RS-232 | U12 MAX3232, C50–C54, J2 DE-9 male |
-| I²C | R40/R41 SDA/SCL pull-ups (2.2 k), R42 KNOB_INT pull-up, U13 MCP4728 (+C60) → J7 PMT, U14 ADS1115 (+C61) ← J8 levers, J3/J4 Qwiic, J5 knob header |
+| I²C expansion | R40/R41 SDA/SCL pull-ups (2.2 k), J3/J4 Qwiic |
 | OBI sync | R50/R51 (56 Ω, same part as the LED resistors), J6 |
 
-Values to confirm before ordering: LED current resistors R20–R24 and the peaking caps (HFBR-1521Z datasheet), F1 rating, and the MCP4728 output range against the PMT amplifier's gain input.
+Values to confirm before ordering: LED current resistors R20–R24 and the peaking caps (HFBR-1521Z datasheet), and F1 rating.
 
 ## Purchasing (Digi-Key, checked 2026-11-13)
 
 Every part carries `Manufacturer`, `MPN`, `DigiKey_PN`, `Unit_Price_USD` and `BOM_Note` fields (set in `PARTS` in `tools/build_schematic.py`); export with `kicad-cli sch export bom` (see `leo_control_box_bom.csv`). Rules applied: in stock at Digi-Key, not Marketplace, orderable in single quantities (cut tape where offered); values consolidated.
 
-- **To buy: about $21.90** at single-quantity prices (25 line items).
+- **To buy: about $13.82** at single-quantity prices (after removing the DAC, ADC and knob/lever/PMT headers on 2026-11-14).
 - **Already in stock with the owner:** Teensy 4.0 (Digi-Key stock 0), HFBR-1521Z ×5 (Digi-Key backordered; in-stock alternative AFBR-1521CZ, 516-3584-ND, 30 mA max drive), HFBR-2521Z ×3.
 - **Substitutions:** Phoenix 1715721 (out of stock) → **1729128** (same MKDS 1,5/2-5,08 footprint); Bourns MF-MSMF110-2 (obsolete) → **Littelfuse 1812L110/16DR** (1.1 A hold, 16 V, 1812).
-- **Consolidation:** four resistor values (10k, 1k, 2.2k, 56 Ω; the sync series resistors moved from 33 to 56 Ω); one 100 nF part for all 13 decoupling/charge-pump capacitors; one green LED for both indicators; one 1 × 40 header strip cut into J5–J8.
+- **Consolidation:** four resistor values (10k, 1k, 2.2k, 56 Ω; the sync series resistors moved from 33 to 56 Ω); one 100 nF part for all 11 decoupling/charge-pump capacitors; one green LED for both indicators; one 1 × 40 header strip, cut for J6.
 - **DE-9:** NorComp 182-009-113R531 (0.318 in backset, board locks). The footprint was changed to `DSUB-9_Pins_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm`; **verify pin-row offset and board-lock hole size against the NorComp drawing before layout.**
 - Peaking capacitors C20–C24 are DNP (no part chosen).

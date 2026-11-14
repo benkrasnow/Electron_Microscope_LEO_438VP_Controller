@@ -191,12 +191,11 @@ def teensy_footprint():
 DSUB = "DSUB-9_Pins_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm"
 STOCK_FP = {
     "OptoDevice": ["AGILENT_HFBR-152x", "AGILENT_HFBR-252x"],
-    "Package_SO": ["SOIC-16_3.9x9.9mm_P1.27mm", "SOIC-14_3.9x8.7mm_P1.27mm", "MSOP-10_3x3mm_P0.5mm"],
+    "Package_SO": ["SOIC-16_3.9x9.9mm_P1.27mm", "SOIC-14_3.9x8.7mm_P1.27mm"],
     "Package_TO_SOT_SMD": ["SOT-23"],
     "Connector_Dsub": [DSUB],
     "Connector_JST": ["JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"],
-    "Connector_PinHeader_2.54mm": ["PinHeader_1x03_P2.54mm_Vertical", "PinHeader_1x05_P2.54mm_Vertical",
-                                   "PinHeader_1x06_P2.54mm_Vertical"],
+    "Connector_PinHeader_2.54mm": ["PinHeader_1x03_P2.54mm_Vertical"],
     "TerminalBlock_Phoenix": ["TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal"],
     "Resistor_SMD": ["R_0805_2012Metric"],
     "Capacitor_SMD": ["C_0805_2012Metric", "C_1206_3216Metric"],
@@ -207,8 +206,6 @@ STOCK_FP = {
 # stock symbols copied into the project library: (library, name, project footprint)
 STOCK_SYM = [
     ("Interface_UART", "MAX3232", "SOIC-16_3.9x9.9mm_P1.27mm"),
-    ("Analog_DAC", "MCP4728", "MSOP-10_3x3mm_P0.5mm"),
-    ("Analog_ADC", "ADS1115IDGS", "MSOP-10_3x3mm_P0.5mm"),
     ("74xx", "74AHCT125", "SOIC-14_3.9x8.7mm_P1.27mm"),
     ("Transistor_FET", "2N7002", "SOT-23"),
     ("Connector", "DE9_Pins_MountingHoles", DSUB),
