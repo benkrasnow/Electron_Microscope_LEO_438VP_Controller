@@ -125,9 +125,8 @@ PARTS = {
     "C47u":   ("Samsung Electro-Mechanics", "CL31A476MPHNNNE", "1276-3063-1-ND", 0.59, "10 V X5R 1206; low Digi-Key stock (123)"),
     "LED":    ("Lite-On", "LTST-C171GKT", "160-1423-1-ND", 0.15, "green, used for both indicators"),
     "FUSE":   ("Littelfuse", "1812L110/16DR", "F3485CT-ND", 0.74, "replaces obsolete Bourns MF-MSMF110-2"),
-    "TB2":    ("Phoenix Contact", "1729128", "277-1247-ND", 0.95, "MKDS 1,5/2-5,08; replaces out-of-stock 1715721"),
     "DE9M":   ("NorComp", "182-009-113R531", "182-09ME-ND", 2.41, "0.318 in backset, board locks; VERIFY footprint against the NorComp drawing"),
-    "HDR":    ("Sullins", "PRPC040SAAN-RC", "S1011EC-40-ND", 1.23, "1x40 breakaway strip, cut for J6"),
+    "HDR":    ("Sullins", "PRPC040SAAN-RC", "S1011EC-40-ND", 1.23, "1x40 breakaway strip, cut for J6 and J11"),
     "QWIIC":  ("JST", "SM04B-SRSS-TB(LF)(SN)", "455-SM04B-SRSS-TBCT-ND", 0.51, ""),
     "AHCT125": ("Texas Instruments", "SN74AHCT125DR", "296-4652-1-ND", 0.52, ""),
     "2N7002": ("onsemi", "2N7002LT1G", "2N7002LT1GOSCT-ND", 0.26, ""),
@@ -136,6 +135,10 @@ PARTS = {
     "HFBR_TX": ("Broadcom", "HFBR-1521Z", "516-2043-ND", 19.14, "owner has stock; Digi-Key backordered (alt AFBR-1521CZ 516-3584-ND)"),
     "HFBR_RX": ("Broadcom", "HFBR-2521Z", "516-2062-ND", 20.46, "owner has stock"),
     "USBC":    ("GCT", "USB4125-GF-A", "2073-USB4125-GF-ACT-ND", 0.61, "USB-C receptacle, power only (6 pin)"),
+    "ISO":     ("Texas Instruments", "ISO6720FBDR", "296-ISO6720FBDRCT-ND", 2.13, "2-ch digital isolator, outputs default low when unpowered"),
+    "BAT":     ("Panasonic", "CR-2032/HFN", "11-CR-2032/HFN-ND", 1.40, "CR2032 with solder tabs, Teensy RTC backup"),
+    "BTN_RED": ("E-Switch", "PS1024ALRED", "EG2025-ND", 1.76, "OFF-BOARD: panel pushbutton, momentary, red (button 1, safe state)"),
+    "BTN_BLK": ("E-Switch", "PS1024ALBLK", "EG2021-ND", 1.66, "OFF-BOARD: panel pushbutton, momentary, black (buttons 2 and 3)"),
     "IDC20":   ("Sullins", "SBH11-PBPC-D10-ST-BK", "S9172-ND", 0.46, "2x10 shrouded box header for the display cable"),
     "LCD":     ("Newhaven Display", "NHD-4.3-800480FT-CSXP-CTP", "757-NHD-4.3-800480FT-CSXP-CTP-ND", 75.14,
                 "OFF-BOARD: 4.3 in 800x480 IPS EVE (FT813) display, capacitive touch"),
@@ -149,13 +152,13 @@ def part_key(lib_id, value, dnp):
     name = lib_id.split(":")[1]
     by_name = {"74AHCT125": "AHCT125", "2N7002": "2N7002", "MAX3232": "MAX3232",
                "Teensy_4.0": "TEENSY", "HFBR-1521Z": "HFBR_TX", "HFBR-2521Z": "HFBR_RX",
-               "LED": "LED", "Polyfuse": "FUSE", "Conn_01x02": "TB2", "DE9_Pins_MountingHoles": "DE9M",
-               "Conn_01x03": "HDR", "Conn_01x04_MountingPin": "QWIIC", "Conn_02x10_Odd_Even": "IDC20",
+               "LED": "LED", "Polyfuse": "FUSE", "DE9_Pins_MountingHoles": "DE9M",
+               "Conn_01x04": "HDR", "ISO6720FBD": "ISO", "Battery_Cell": "BAT", "Conn_01x04_MountingPin": "QWIIC", "Conn_02x10_Odd_Even": "IDC20",
                "USB_C_Receptacle_PowerOnly_6P": "USBC"}
     if name in by_name:
         return by_name[name]
     if name == "MountingHole":                         # placeholder symbols for off-board items
-        return {"Display NHD-4.3": "LCD", "Display cable": "CABLE20"}[value]
+        return {"Display NHD-4.3": "LCD", "Display cable": "CABLE20", "Button red": "BTN_RED", "Button black": "BTN_BLK"}[value]
     if name == "R":
         return {"10k": "R10k", "1k": "R1k", "2.2k": "R2k2", "56": "R56", "5.1k": "R5k1"}[value]
     if name == "C":
@@ -233,14 +236,11 @@ def build():
     text("LEO 438VP control box: Teensy 4.0 machine-state / safety controller", 20, 18, 3.5)
 
     # --- power ------------------------------------------------------------------------------------
-    text("5 V input (from the SEM side; Teensy VUSB-VIN link cut)", 20, 32)
-    place("Connector_Generic:Conn_01x02", "J1", "5V_IN", FP + "TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal",
-          30, 45, {"1": "+5V_IN", "2": "GND"})
+    text("5 V input: USB-C J10 only (Teensy VUSB-VIN pad cut)", 20, 32)
     place("Device:Polyfuse", "F1", "1.1A hold", FP + "Fuse_1812_4532Metric", 50, 45, {"1": "+5V_IN", "2": "+5V"})
     two(CB, "C1", "47u 10V", 65, 45, "+5V", "GND")
-    # USB-C power input (5 V from a plain wall adapter; no USB data, no PD). Same +5V_IN node as J1.
-    text("USB-C 5 V in (power only)", 112, 104, 1.8)
-    text("Use J1 or J10, not both.", 112, 108, 1.8)
+    # USB-C power input (5 V from a plain wall adapter; no USB data, no PD), the board's only supply.
+    text("USB-C 5 V in (power only, >= 1.5 A adapter)", 112, 104, 1.8)
     place(T + "USB_C_Receptacle_PowerOnly_6P", "J10", "USB-C 5V", FP + "USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal",
           125, 78, {"A9": "+5V_IN", "A12": "GND", "A5": "USB_CC1", "B5": "USB_CC2", "SH": "GND"})
     two(R_, "R65", "5.1k", 155, 81, "USB_CC1", "GND")
@@ -260,6 +260,7 @@ def build():
     tpins = {"0": "EHT_RX", "1": "EHT_TX", "2": "EO_F3", "3": "EO_F4", "4": "EO_F1", "5": "EO_F2",
              "6": "SYNC_LINE_T", "7": "STG_RX", "8": "STG_TX", "9": "SYNC_FRAME_T",
              "14": "VP_TX", "15": "VP_RX", "18": "SDA", "19": "SCL", "23": "STATUS_LED",
+             "16": "BTN1_T", "17": "BTN2_T", "20": "BTN3_T",
              "10": "LCD_CS", "11": "LCD_MOSI_T", "12": "LCD_MISO", "13": "LCD_SCK_T", "21": "LCD_PD", "22": "LCD_INT"}
     left = ["GND"] + [str(i) for i in range(13)]
     right = [str(i) for i in range(13, 24)] + ["3V3", "GND", "VIN"]
@@ -270,7 +271,8 @@ def build():
         elif name == "VIN": conns[str(pad)] = "+5V"
         else: conns[str(pad)] = tpins.get(name)
     place(T + "Teensy_4.0", "U1", "Teensy 4.0", FP + "Teensy_4.0", 60, 110, conns)
-    text("Spare: 16/17 (UART4/I2C1), 20", 20, 140, 1.8)
+    text("CUT the Teensy's VUSB-VIN pad: power comes from J10 only.", 20, 140, 1.8)
+    text("No spare pins left (16/17/20 = buttons).", 20, 144, 1.8)
 
     # --- fiber transmitters ----------------------------------------------------------------------
     text("Fiber transmitters (HFBR-1521Z)", 170, 32)
@@ -337,11 +339,45 @@ def build():
               370 + 22 * k, 150, {"1": "GND", "2": "+3V3", "3": "SDA", "4": "SCL", "MP": "GND"})
 
     # --- OBI sync --------------------------------------------------------------------------------
-    text("Sync to OBI (Glasgow port, 3.3 V)", 330, 300)
-    two(R_, "R50", "56", 340, 315, "SYNC_LINE_T", "SYNC_LINE")
-    two(R_, "R51", "56", 350, 315, "SYNC_FRAME_T", "SYNC_FRAME")
-    place("Connector_Generic:Conn_01x03", "J6", "OBI sync", FP + "PinHeader_1x03_P2.54mm_Vertical", 385, 315,
-          {"1": "SYNC_LINE", "2": "SYNC_FRAME", "3": "GND"})
+    # Isolated so the PC (USB to both the Teensy and the OBI) does not close a ground loop through this cable.
+    text("Sync to OBI (isolated outputs)", 330, 290)
+    text("Side 2 is powered by the OBI end: J6 pin 1 = Glasgow port Vio (1.8-5 V).", 330, 295, 1.8)
+    text("SYNC_GND is NOT board GND. Outputs default low while the box is off.", 330, 299, 1.8)
+    place("Isolator:ISO6720FBD", "U13", "ISO6720FBDR", FP + "SOIC-8_3.9x4.9mm_P1.27mm", 370, 320,
+          {"1": "+3V3", "2": "SYNC_LINE_T", "3": "SYNC_FRAME_T", "4": "GND",
+           "5": "SYNC_GND", "6": "SYNC_FRAME_ISO", "7": "SYNC_LINE_ISO", "8": "SYNC_VIO"})
+    two(C_, "C70", "100n", 340, 320, "+3V3", "GND")
+    two(C_, "C71", "100n", 400, 320, "SYNC_VIO", "SYNC_GND")
+    two(R_, "R50", "56", 412, 320, "SYNC_LINE_ISO", "SYNC_LINE")
+    two(R_, "R51", "56", 422, 320, "SYNC_FRAME_ISO", "SYNC_FRAME")
+    place("Connector_Generic:Conn_01x04", "J6", "OBI sync", FP + "PinHeader_1x04_P2.54mm_Vertical", 450, 320,
+          {"1": "SYNC_VIO", "2": "SYNC_LINE", "3": "SYNC_FRAME", "4": "SYNC_GND"})
+    for i, net in enumerate(("SYNC_VIO", "SYNC_GND")):              # isolated side is supplied through J6
+        x, y = snap(410 + 14 * i), snap(340)
+        instance("power:PWR_FLAG", "#FLG%02d" % (3 + i), "PWR_FLAG", "", x, y, hide_ref=True)
+        label(net, x, y, 90)
+
+    # --- RTC backup battery ----------------------------------------------------------------------
+    text("RTC backup (Teensy VBAT)", 20, 235)
+    text("Wire TP1 to the VBAT pad on the Teensy's underside.", 20, 240, 1.8)
+    text("Drawn only while the box is unpowered.", 20, 244, 1.8)
+    place("Device:Battery_Cell", "BT1", "CR2032", FP + "Battery_Panasonic_CR2032-HFN_Horizontal_CircularHoles", 35, 260,
+          {"1": "VBAT", "2": "GND"})
+    place("Connector:TestPoint", "TP1", "VBAT wire", FP + "TestPoint_THTPad_D1.5mm_Drill0.7mm", 55, 255, {"1": "VBAT"})
+
+    # --- pushbuttons -----------------------------------------------------------------------------
+    text("Front-panel pushbuttons (functions assigned in firmware)", 20, 280)
+    text("Button 1 (red) intended as SAFE STATE. Active low: 10k pull-up, 100n RC, 1k series.", 20, 285, 1.8)
+    for i in range(3):
+        n, x = i + 1, 30 + 30 * i
+        two(R_, "R%d" % (70 + i), "10k", x, 300, "+3V3", "BTN%d" % n)
+        two(C_, "C%d" % (72 + i), "100n", x + 8, 300, "BTN%d" % n, "GND")
+        two(R_, "R%d" % (73 + i), "1k", x + 16, 300, "BTN%d" % n, "BTN%d_T" % n)
+    place("Connector_Generic:Conn_01x04", "J11", "BUTTONS", FP + "PinHeader_1x04_P2.54mm_Vertical", 130, 300,
+          {"1": "BTN1", "2": "BTN2", "3": "BTN3", "4": "GND"})
+    instance("Mechanical:MountingHole", "X3", "Button red", "", 30, 318, on_board=False)
+    instance("Mechanical:MountingHole", "X4", "Button black", "", 50, 318, on_board=False)
+    instance("Mechanical:MountingHole", "X5", "Button black", "", 70, 318, on_board=False)
 
     # --- touch display (Newhaven NHD-4.3-800480FT-CSXP-CTP, FT813 EVE) -----------------------------
     text("Touch display (NHD-4.3, FT813)", 20, 160)
