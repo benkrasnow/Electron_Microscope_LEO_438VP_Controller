@@ -96,6 +96,20 @@ button:disabled { opacity: .38; cursor: not-allowed; filter: none !important; }
 .state.ok { color: var(--ok); background: rgba(52, 211, 153, .12); }
 .state.warn { color: var(--warn); background: rgba(251, 191, 36, .12); }
 .state.bad { color: var(--bad); background: rgba(248, 113, 113, .12); }
+.vacsys { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 9px; background: var(--panel2); border: 1px solid var(--line); }
+.vacsys .dot { width: 12px; height: 12px; }
+.vacsys b { display: block; font-size: 17px; font-weight: 650; }
+.vacsys small { display: block; color: var(--muted); font-size: 12px; }
+.vacsys.ok { border-color: rgba(52, 211, 153, .45); } .vacsys.ok b { color: var(--ok); }
+.vacsys.warn { border-color: rgba(251, 191, 36, .45); } .vacsys.warn b { color: var(--warn); }
+.vacsys.bad { border-color: rgba(248, 113, 113, .45); } .vacsys.bad b { color: var(--bad); }
+.vacsys.busy .dot { animation: pulse 1.2s infinite ease-in-out; }
+@keyframes pulse { 50% { opacity: .25; } }
+.press { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.press div { background: var(--panel2); border-radius: 8px; padding: 7px 10px; display: flex; flex-direction: column; }
+.press span { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+.press b { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.press small { color: var(--dim); font-size: 11px; }
 .big { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 8px; }
 .big small { font-size: 12px; color: var(--muted); font-weight: 400; }
 .row2 { display: flex; gap: 8px; }

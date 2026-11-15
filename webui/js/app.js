@@ -120,9 +120,10 @@ function render() {
   const { vac, vp, eht, stg, eo, sys } = st;
 
   // App bar
-  const vacTxt = !vac.link ? "No link" : vac.txt;
+  const vsys = vacSystemState(st);
+  const vacTxt = vsys.text;
   $("chipVacTxt").textContent = vacTxt;
-  chip($("chipVac"), !vac.link ? "bad" : vac.ready ? "ok" : "warn");
+  chip($("chipVac"), vsys.cls === "ok" ? "ok" : vsys.cls === "bad" ? "bad" : "warn");
   const beamTxt = { on: `On · ${(+eht.kv).toFixed(1)} kV`, off: "Off", cooling: "Off · cooling", starting: "Starting", stopping: "Stopping", eht_off: "EHT off · fil. lit" }[eht.beam] || eht.beam;
   $("chipBeamTxt").textContent = beamTxt;
   chip($("chipBeam"), eht.beam === "on" ? "ok" : eht.beam === "off" ? null : "warn");
@@ -131,8 +132,15 @@ function render() {
   $("activity").textContent = sys.act || eht.act || "";
 
   // Vacuum card
-  stateClass($("vacState"), !vac.link ? "bad" : vac.ready ? "ok" : "warn", vacTxt);
-  $("vacPress").textContent = vac.torr !== null ? fmtTorr(vac.torr) : (vac.st === "NSP" ? "Atmosphere" : "–");
+  stateClass($("vacState"), !vac.link ? "bad" : inVp ? "warn" : "", !vac.link ? "No link" : inVp ? "VP mode" : vac.st === "NSP" ? "At air" : "HV mode");
+  $("vacSys").className = "vacsys " + vsys.cls + (vsys.busy ? " busy" : "");
+  $("vacSysTxt").textContent = vsys.text;
+  $("vacSysSub").textContent = vsys.sub;
+  // Column: Penning (stage/vacuum controller). Chamber: Pirani on the VP controller, shown at all times.
+  $("vacPress").textContent = !vac.link ? "–" : vac.torr !== null ? fmtTorr(vac.torr) : vac.st === "NSP" ? "Atmosphere" : "gauge off";
+  $("vacPressSub").textContent = vac.link ? `Penning · raw ${vac.raw}` : "Penning · no link";
+  $("vpPress").textContent = !vp.link ? "–" : fmtPa(vp.pa, vp.gauge);
+  $("vpPressSub").textContent = vp.link ? `Pirani · ${vp.gauge} counts` : "Pirani · no link";
   $("btnPump").disabled = !(vac.link && vac.st === "NSP" && sys.op === "none");
   $("btnVent").disabled = !(vac.link && vac.st !== "NSP" && vac.st !== "WVT" && (sys.op === "none" || sys.op === "pump"));
   for (const b of $("segVp").children) {
@@ -140,7 +148,6 @@ function render() {
     b.disabled = !vp.hs || !vac.ready || sys.op !== "none";
   }
   setVal($("inVpPa"), vp.tgt);
-  $("vpChamber").textContent = inVp ? `chamber ${vp.pa.toFixed(0)} Pa · ${vp.name}` : vp.link ? vp.name : "VP link down";
 
   // Beam card
   const bb = $("btnBeam");
@@ -175,6 +182,46 @@ function render() {
 
   updateDatabar();
   if (obiState.demo) worker.postMessage({ type: "config", cfg: liveCfg() });
+}
+
+// One plain-language state for the whole vacuum system: stage/vacuum controller state,
+// VP controller state and the running sequence combined.
+function vacSystemState(s) {
+  const { vac, vp, sys } = s;
+  const vpName = vp.link ? `VP controller: ${vp.name} (${vp.st})` : "VP controller: no link";
+  const R = (text, cls, sub = vpName, busy = false) => ({ text, cls, sub, busy });
+  if (!vac.link) return R("No link", "bad", "Stage/vacuum controller not answering");
+  if (!vac.cfg) return R("Starting up", "warn", "Configuring the stage/vacuum controller", true);
+  // A sequence that is still taking the beam off / cooling the filament comes first.
+  const act = sys.act || "";
+  if (sys.op === "vent" && vac.st !== "WVT" && vac.st !== "NSP") return R("Preparing to vent", "warn", act, true);
+  if (sys.op === "vp_enter" && !(vp.st >= 7)) return R("Preparing for VP", "warn", act, true);
+  if (sys.op === "vp_exit" && !(vp.st >= 10 || vp.st === 4)) return R("Preparing for HV", "warn", act, true);
+  if (sys.op === "vp_target" && vp.st === 9) return R("Changing VP pressure", "warn", act, true);
+  switch (vac.st) {
+    case "WVT": return R("Venting", "warn", "Vent valve open", true);
+    case "NSP": return R("Vented (idle)", "", "Chamber at air");
+    case "WTUS": return R("Pumping", "warn", "Waiting for turbo speed", true);
+    case "WP": return R("Pumping", "warn", "Waiting for the Penning gauge", true);
+    case "SP": return R("Pumping", "warn", "Penning reading, not yet ready", true);
+    case "SPE": return R("Gauge error", "bad", "Penning gauge error");
+  }
+  if (vac.st !== "SPVR") return R(vac.txt, "warn");
+  if (!vp.link) return R("HV ready", "ok", vpName);
+  switch (vp.st) {
+    case 7: case 8: return R("Going to VP", "warn", `${vpName} · target ${vp.tgt} Pa`, true);
+    case 9: return R("VP ready", "ok", `${vpName} · target ${vp.tgt} Pa`);
+    case 10: case 11: case 4: return R("Going to HV", "warn", vpName, true);
+    case 0: return R("HV ready", "warn", "VP controller in POWER_UP: handshaking");
+    default: return R("HV ready", "ok", vpName);
+  }
+}
+
+// Chamber pressure from the Pirani: ~0 Pa below its range (high vacuum), capped at the top of the table at air.
+function fmtPa(pa, counts) {
+  if (counts >= 1880) return "Atmosphere";
+  if (pa < 1) return "< 1 Pa";
+  return pa < 10 ? `${pa.toFixed(1)} Pa` : `${Math.round(pa)} Pa`;
 }
 
 function hfwMm() { return (st ? prefs.hfw1 / st.eo.mag : NaN); }

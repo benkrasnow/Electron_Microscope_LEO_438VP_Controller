@@ -107,7 +107,11 @@
     <!-- Vacuum -->
     <section class="card">
       <header><h3>Vacuum</h3><span class="state" id="vacState">–</span></header>
-      <div class="big"><span id="vacPress">–</span><small id="vacPressLbl">column</small></div>
+      <div class="vacsys" id="vacSys"><span class="dot"></span><div><b id="vacSysTxt">–</b><small id="vacSysSub"></small></div></div>
+      <div class="press">
+        <div><span>Column</span><b id="vacPress">–</b><small id="vacPressSub">Penning</small></div>
+        <div><span>Chamber</span><b id="vpPress">–</b><small id="vpPressSub">Pirani</small></div>
+      </div>
       <div class="row2">
         <button id="btnPump" class="action">Pump</button>
         <button id="btnVent" class="action warn">Vent</button>
@@ -122,7 +126,6 @@
       <div class="field inline">
         <label for="inVpPa">VP target</label>
         <div class="num"><input id="inVpPa" type="number" min="1" max="400" step="1"><span class="unit">Pa</span></div>
-        <span class="muted" id="vpChamber"></span>
       </div>
     </section>
 
