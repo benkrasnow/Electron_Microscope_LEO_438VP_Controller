@@ -33,7 +33,7 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
   - histogram of the raw OBI values over the full 16-bit range, with two draggable lines: left = black, right = white (drag between them to move both). They set the live display and are applied to saved TIFFs (the levels are recorded in the TIFF description);
   - PMT voltage (LEO-32's "brightness": PM HV channel 1 on the EHT set), slider and number box;
   - SE collector voltage, slider and number box;
-  - probe current in pA (logarithmic slider), Optibeam mode (Resolution / Depth / Auto) and the aperture fitted (30 / 50 µm). Optibeam is always on, so the condensers follow these; there is no Optibeam switch.
+  - probe current in pA (logarithmic slider). Optibeam is always on, so the condensers follow it; the Optibeam mode (Resolution / Depth / Auto) and the aperture fitted (30 / 50 µm) are in the Beam card.
 - **Focus** (toolbar above the image, next to Capture): the working distance in mm. The box sets the objective for that WD, so moving it shows directly how the WD changes.
   - Data bar: HFW, magnification, kV, WD, dwell, pixels, vacuum, frame rate.
 - **Mouse on the image:**
@@ -43,7 +43,7 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
   - double-click: move the stage to centre that point.
 - **Side panels:**
   - Vacuum: pump, vent, HV / VP with target pressure.
-  - Beam: beam on/off, EHT with presets; emission and filament under "Gun".
+  - Beam: beam on/off, EHT with presets, Optibeam mode, aperture; emission and filament under "Gun".
   - Image: magnification, stigmators, focus wobble; rotation, tilt correction and beam shift under "Scan geometry".
   - Stage: positions, jog pad with step size, joystick sensitivity, go-to, initialise.
 - **STOP** (or **Esc**): beam off, stage stop, abort sequences.

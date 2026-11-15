@@ -93,8 +93,11 @@
     </div>
 
     <div class="detbar">
+      <div class="det">
+      <label>Histogram</label>
       <div class="histwrap" title="Detector signal histogram (full 16-bit range). Drag the lines: left = black, right = white. Drag between them to move both.">
         <canvas id="hist"></canvas>
+      </div>
       </div>
       <div class="det">
         <label for="inPmt">PMT voltage <small>(brightness)</small></label>
@@ -107,17 +110,6 @@
       <div class="det">
         <label for="inProbe">Probe current <small>(pA)</small></label>
         <div class="detrow"><input type="range" id="slProbe" min="0" max="1000" step="1" title="Logarithmic"><div class="num"><input id="inProbe" type="number" min="1" step="any"></div></div>
-        <div class="detrow optirow">
-          <div class="seg" id="segObeam" title="Optibeam mode, as in LEO-32">
-            <button data-ob="normal" title="Best resolution for the probe current">Resolution</button>
-            <button data-ob="depth" title="Small aperture angle: more depth of field">Depth</button>
-            <button data-ob="auto" title="The box picks the probe current for best resolution at this kV">Auto</button>
-          </div>
-          <div class="seg" id="segAp" title="Aperture fitted on the column (entered by hand; nothing senses it)">
-            <button data-ap="30">30 µm</button>
-            <button data-ap="50">50 µm</button>
-          </div>
-        </div>
       </div>
     </div>
     </div>
@@ -173,6 +165,21 @@
       </div>
       <div class="chips-row" id="kvPresets">
         <button data-kv="1">1</button><button data-kv="3">3</button><button data-kv="5">5</button><button data-kv="10">10</button><button data-kv="15">15</button><button data-kv="20">20</button><button data-kv="30">30</button>
+      </div>
+      <div class="field inline">
+        <label>Optibeam</label>
+        <div class="seg grow" id="segObeam" title="Optibeam mode, as in LEO-32">
+          <button data-ob="normal" title="Best resolution for the probe current">Resolution</button>
+          <button data-ob="depth" title="Small aperture angle: more depth of field">Depth</button>
+          <button data-ob="auto" title="The box picks the probe current for best resolution at this kV">Auto</button>
+        </div>
+      </div>
+      <div class="field inline">
+        <label>Aperture</label>
+        <div class="seg grow" id="segAp" title="Aperture fitted on the column (entered by hand; nothing senses it)">
+          <button data-ap="30">30 µm</button>
+          <button data-ap="50">50 µm</button>
+        </div>
       </div>
       <details class="more">
         <summary>Gun</summary>
