@@ -60,7 +60,7 @@ X(OP_PM3,            "op.pm3",            400,   0,    4095,   "",   FL_OP|FL_IN
 X(OP_VP_PA,          "op.vp_pa",          20,    1,    400,    "Pa", FL_OP,  "VP chamber pressure target") \
 X(OP_MAG,            "op.mag",            100,   1,    1e6,    "x",  FL_OP,  "magnification") \
 X(OP_ROT,            "op.rot",            0,     -360, 360,    "deg",FL_OP,  "scan rotation") \
-X(OP_WD,             "op.wd",             15,    1,    60,     "mm", FL_OP,  "working distance used for the scan geometry") \
+X(OP_WD,             "op.wd",             15,    2,    150,    "mm", FL_OP,  "working distance as LEO-32 displayed it: sets the objective (eo.model 1) and the scan geometry") \
 X(OP_TILT,           "op.tilt",           0,     -89,  89,     "deg",FL_OP,  "tilt correction angle (0 = off)") \
 X(OP_SPEED,          "op.speed",          5,     0,    15,     "",   FL_OP|FL_INT, "internal scan speed 0-15") \
 X(OP_SCAN,           "op.scan",           0,     0,    3,      "",   FL_OP|FL_INT, "scan mode 0 external (OBI), 1 raster, 2 line, 3 spot") \
@@ -72,7 +72,9 @@ X(OP_COND0,          "op.cond0",          45,    0,    4095,   "",   FL_OP,  "co
 X(OP_COND1,          "op.cond1",          182,   0,    4095,   "",   FL_OP,  "condenser chip 0 DAC1") \
 X(OP_COND2,          "op.cond2",          23,    0,    4095,   "",   FL_OP,  "condenser chip 0 DAC2") \
 X(OP_COND3,          "op.cond3",          218,   0,    4095,   "",   FL_OP,  "condenser chip 0 DAC3") \
-X(OP_PROBE_PA,       "op.probe_pa",        300,   1,    100000, "pA",  FL_OP , "probe current (Optibeam: sets the condenser through the eo.pc* table)") \
+X(OP_PROBE_PA,       "op.probe_pa",        300,   1,    100000, "pA",  FL_OP , "probe current (Optibeam: sets the condensers through the column model or the eo.pc* table)") \
+X(OP_OBEAM,          "op.obeam",          0,     0,    2,      "",   FL_OP|FL_INT, "Optibeam mode 0 Normal (resolution) / 1 Depth / 2 Auto resolution (picks the probe current)") \
+X(OP_APERTURE,       "op.aperture",       50,    5,    1000,   "um", FL_OP,  "final aperture diameter entered by the operator (LEO-32 offered 30 and 50 um)") \
 X(OP_SHIFT_X,        "op.shift_x",        0,     -2047,2047,   "",   FL_OP,  "beam shift X (image axes, DAC counts)") \
 X(OP_SHIFT_Y,        "op.shift_y",        0,     -2047,2047,   "",   FL_OP,  "beam shift Y") \
 X(OP_SPOT_X,         "op.spot_x",         32768, 0,    65535,  "",   FL_OP|FL_INT, "spot mode X position") \
@@ -271,6 +273,27 @@ X(EO_MAG_MAX,        "eo.mag_max",        500000,1,    1e7,    "x",  0,      "hi
 X(EO_KV_OBJ,         "eo.kv_obj",         1,     0,    1,      "",   FL_INT, "1: scale objective coarse with sqrt(relativistic kV) on kV changes") \
 X(EO_KV_COND,        "eo.kv_cond",         0,     0,    1,      "",    FL_INT, "1: scale the condenser DACs with sqrt(kV) (only with eo.optibeam = 0)") \
 X(EO_OPTIBEAM,       "eo.optibeam",        1,     0,    1,      "",    FL_INT, "1: condenser follows op.probe_pa through the eo.pc* table; 0: op.cond* set directly") \
+X(EO_MODEL,         "eo.model",           1,     0,    1,      "",     FL_INT, "1: lenses from the column model (op.wd / op.probe_pa / op.obeam / op.aperture); 0: eo.pc* table and op.obj_* directly") \
+X(EO_CAL1,          "eo.cal1",            0.93565, 0.3,  3,      "",     0     , "C1 calibration LEO-32 effectively used (fit; Data.vac 1.0597)") \
+X(EO_CAL2,          "eo.cal2",            0.9042, 0.3,  3,      "",     0     , "C2 calibration (fit to the Depth-mode C2 ceiling; Data.vac 1.05973)") \
+X(EO_CAL3,          "eo.cal3",            0.991194, 0.3,  3,      "",     0     , "objective calibration (Data.vac)") \
+X(EO_REM1,          "eo.rem1",            0.0101, -1,   1,      "A",    0     , "C1 remanence (Data.vac)") \
+X(EO_REM2,          "eo.rem2",            0.0101094, -1,   1,      "A",    0     , "C2 remanence (Data.vac)") \
+X(EO_REM3,          "eo.rem3",            0.0107648, -1,   1,      "A",    0     , "objective remanence (Data.vac)") \
+X(EO_XTALK,         "eo.xtalk",           0.0422491, -1,   1,      "",     0     , "C1 / C2 crosstalk (Data.vac)") \
+X(EO_WD_A,          "eo.wd_a",            1.21696, 0.5,  2,      "",     0     , "model WD = (op.wd - eo.wd_b) / eo.wd_a (LEO-32 display scale; fit)") \
+X(EO_WD_B,          "eo.wd_b",            1.876, -20,  20,     "mm",   0     , "display WD offset (fit)") \
+X(EO_KN,            "eo.kn",              0.95935, 0.01, 100,    "",     0     , "Normal mode probe-size constant (fit)") \
+X(EO_AN,            "eo.an",              0.91561, 0.1,  10,     "",     0     , "Normal mode optimum-angle scale (fit)") \
+X(EO_KD,            "eo.kd",              12.78728, 0.01, 1000,   "",     0     , "Depth mode constant (fit)") \
+X(EO_KD0,           "eo.kd0",             1.46246, 0.1,  10,     "",     0     , "gun source-size factor (fit)") \
+X(EO_THR,           "eo.thr",             0.95,  0.1,  0.999,  "",     0     , "fraction of the aperture-limited angle above which C2 goes to its limit") \
+X(EO_AR2,           "eo.ar2",             50,    1,    100000, "pA",   0     , "Auto resolution probe current at 2 kV (LEO-32 UI 2026-11-15)") \
+X(EO_AR5,           "eo.ar5",             70,    1,    100000, "pA",   0     , "Auto resolution probe current at 5 kV") \
+X(EO_AR10,          "eo.ar10",            90,    1,    100000, "pA",   0     , "Auto resolution probe current at 10 kV") \
+X(EO_AR20,          "eo.ar20",            150,   1,    100000, "pA",   0     , "Auto resolution probe current at 20 kV (log-log interpolated; extrapolated above)") \
+X(EO_PA_MIN,        "eo.pa_min",          1,     0.1,  100000, "pA",   0     , "lowest probe current accepted with eo.model 1") \
+X(EO_PA_MAX,        "eo.pa_max",          100000, 1,    1e6,    "pA",   0     , "highest probe current accepted with eo.model 1") \
 X(EO_PC_KVREF,       "eo.pc_kvref",        5,     0.5,  30,     "kV",  0     , "kV at which the eo.pc* table was taken (captures: 5 kV)") \
 X(EO_PC_KVEXP,       "eo.pc_kvexp",        0,     -2,   2,      "",    0     , "condenser = table * (rel. kV / rel. kV_ref)^exp; 0 = no kV dependence") \
 X(EO_PC1_PA,         "eo.pc1_pa",          50,    0,    100000, "pA",  0     , "Optibeam table point 1: probe current (0 = unused)") \

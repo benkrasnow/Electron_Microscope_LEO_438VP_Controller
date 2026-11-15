@@ -57,6 +57,8 @@ button:disabled { opacity: .38; cursor: not-allowed; filter: none !important; }
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button.on { background: var(--accent2); color: #04121c; font-weight: 600; }
 .seg.full { display: flex; }
+.optirow { margin-top: 6px; gap: 8px; flex-wrap: wrap; }
+.optirow .seg button { padding: 4px 9px; font-size: 12px; }
 .seg.full button { flex: 1; }
 
 /* ---------------------------------------------------------------- workspace */

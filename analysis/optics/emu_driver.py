@@ -13,7 +13,7 @@ CONJUGATE = -0.164
 
 
 class Column:
-    def __init__(self, trace=False):
+    def __init__(self, trace=False, cal=None, rem=None):
         self.g = GSP(G200, trace=trace)
         g = self.g
         # EO register ID tables (filled by the PC in LEO-32): 16-bit IDs, field k = register k+1,
@@ -24,9 +24,9 @@ class Column:
         g.call('_gsp_init_EO_board', ('i', 0))
         g.call('_initialise_lens_data')
         g.call('_initialise_focus_lens_data')
-        for lens, (cal, rem) in CAL.items():
-            g.call(f'_gsp_set_{lens}_cal', ('f', cal))
-            g.call(f'_gsp_set_{lens}_rem', ('f', rem))
+        for i, (lens, (c0, r0)) in enumerate(CAL.items()):
+            g.call(f'_gsp_set_{lens}_cal', ('f', cal[i] if cal else c0))
+            g.call(f'_gsp_set_{lens}_rem', ('f', rem[i] if rem else r0))
         g.call('_gsp_set_lens_xtalk', ('i', 0), ('f', XTLK[0]))
         g.call('_gsp_set_lens_xtalk', ('i', 1), ('f', XTLK[1]))
         g.call('_gsp_set_conjugate_focus', ('f', CONJUGATE))

@@ -101,6 +101,17 @@
       <div class="det">
         <label for="inProbe">Probe current <small>(pA)</small></label>
         <div class="detrow"><input type="range" id="slProbe" min="0" max="1000" step="1" title="Logarithmic"><div class="num"><input id="inProbe" type="number" min="1" step="any"></div></div>
+        <div class="detrow optirow">
+          <div class="seg" id="segObeam" title="Optibeam mode, as in LEO-32">
+            <button data-ob="normal" title="Best resolution for the probe current">Resolution</button>
+            <button data-ob="depth" title="Small aperture angle: more depth of field">Depth</button>
+            <button data-ob="auto" title="The box picks the probe current for best resolution at this kV">Auto</button>
+          </div>
+          <div class="seg" id="segAp" title="Aperture fitted on the column (entered by hand; nothing senses it)">
+            <button data-ap="30">30 µm</button>
+            <button data-ap="50">50 µm</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -180,7 +191,7 @@
       <details class="more">
         <summary>Scan geometry</summary>
         <div class="field inline"><label for="inRot">Rotation</label><div class="num"><input id="inRot" type="number" min="-360" max="360" step="1"><span class="unit">°</span></div></div>
-        <div class="field inline"><label for="inWd">WD</label><div class="num"><input id="inWd" type="number" min="1" max="60" step="0.5"><span class="unit">mm</span></div></div>
+        <div class="field inline"><label for="inWd">WD</label><div class="num"><input id="inWd" type="number" min="2" max="150" step="0.1" title="Sets the objective: same as focusing"><span class="unit">mm</span></div></div>
         <div class="field inline"><label for="inTilt">Tilt corr.</label><div class="num"><input id="inTilt" type="number" min="-89" max="89" step="1"><span class="unit">°</span></div></div>
         <div class="field inline"><label>Beam shift</label><div class="num"><input id="inShX" type="number" min="-2047" max="2047" step="10" title="X"><input id="inShY" type="number" min="-2047" max="2047" step="10" title="Y"></div></div>
       </details>

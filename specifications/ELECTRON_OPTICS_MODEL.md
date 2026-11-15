@@ -4,7 +4,7 @@
 |---|---|
 | Subject | How accelerating voltage (kV), working distance (WD), probe current and focus determine the lens currents; the column model LEO-32 uses (Optibeam) |
 | Source | Decompilation of the GSP module `TIGA/g200.440`. Source files `gcondens`, `gfocus`, `geht`, `goptctrl`, `gcolmod`, `gscncoil` and `gscnxfrm`. The machine data file `C:\LEO\Data.vac`, decoded with the field table of LEO's own `view.exe`. The factory calibration `LEO-32\435vpcal\LEO 438V.clb` |
-| Revision | 0.5, 2026-11-15 (0.1–0.4 same day): GSP emulator (§6.5), condition table and saved LEO-32 operating points (§6.6) |
+| Revision | 0.6, 2026-11-15 (0.1–0.5 same day): fitted to the 2026-11-15 EO captures (§6.7) and implemented in the firmware (§13) |
 | Tools | `analysis/fdec.py` (symbolic decompiler for the TI 340x0 C compiler's software floating point); `analysis/gspemu.py` + `analysis/optics/emu_driver.py` (TMS34020 emulator that runs LEO-32's own column code); raw outputs in `analysis/optics/` |
 
 Markers: **[D]** decoded from the code with constants; **[C]** cross-checked against scope captures; **[I]** inferred, needs confirmation.
@@ -304,6 +304,21 @@ Findings:
    - The gun-related GSP setters (`_gsp_set_emission_amp`, `_gsp_set_first/second_peak`) only feed emission control and auto-saturation, not the source data.
    - The remaining candidates are PC-side: a runtime condition table, or hysteresis / manual condenser changes before saving.
 
+### 6.7 What the 2026-11-15 captures settled **[D][C]**
+`scope_tools/EO_OPTICS_TEST_PLAN.md` captured about 130 settled lens states on the EO link (`analysis/optics/eo_capture_2026-11-15.csv`). With `analysis/optics/fit_capture.py` (the emulator on every step) they settle the LEO-32 side:
+
+| Question | Answer |
+|---|---|
+| Beam off | LEO-32 computes the column from the EHT **readback**: with the beam off that is 0 V, clamped to 100 V. Every earlier capture with objective coarse ≈ 34–76 (the `ctl*` tests, the "trip" event `beam_05`) was such a 100 V state. This explains those odd values, not the C1 mismatch |
+| UI Optibeam modes | Dispatcher `_gsp_notify_optibeam`: **Normal** = mode 0 (`sub_5e000`, optimum angle from Cs); **Depth** = mode 1 (`sub_5ef50`, C2 at its 3.6796 mm focal-length limit); **Auto resolution** = flag +12 (`sub_5df00` picks the probe current: 150 / 90 / 70 / 50 pA at 20 / 10 / 5 / 2 kV, independent of WD and aperture), then mode 0 |
+| Displayed WD | internal WD = (displayed − 1.876 mm) / 1.217 (fit; rms 1.6 objective counts over 5–100 mm and 1–30 kV). A PC-side conversion: a different C3 calibration fits much worse |
+| Condenser calibration | LEO-32 behaves as if C1 / C2 cal were ≈ 0.936 / 0.904, not `Data.vac`'s 1.0597 / 1.05973. The Depth-mode C2 ceiling fixes C2's value to 3 counts at 5 and 20 kV |
+| Gun table | The **LaB6 / standard-anode** table (filament selector 0x172b00 = 1) reproduces the probe-current dependence; the tungsten table does not. Presumably the PC's filament index differs from the GSP's |
+| Magnification | no lens writes |
+| History | none: every state repeats to within a few counts after other changes; first update after a kV change = settled value within 3 counts |
+
+With these inputs the emulator gives Depth exactly (C2 ±4, C1 ±30 counts). In Normal mode it still differs where the optimum angle is large (short WD, low current, 25–30 kV). The firmware model (§13) therefore re-implements the equations with four fitted constants instead of running LEO-32's exact code.
+
 ## 7. `Data.vac`: LEO-32 non-volatile machine data **[D]**
 
 The field layout comes from LEO's own viewer, **`view.exe` ("LEO DATA.VAC File Viewer", 1997)**. Each label in it is preceded by the load of its field. `analysis/datavac.py` extracts the table and decodes any `Data.vac`; the full listing for this machine is `analysis/optics/datavac_decoded.txt`. It's a 1567-byte packed file:
@@ -359,7 +374,7 @@ EO fields for this machine (file offset):
 
 ## 9. What this means for the control box
 
-The firmware currently uses a 4-point probe-current table at 5 kV (`eo.pc*`). With this model it can do what LEO-32 did:
+Items 1–3 are implemented (§13). The original plan, for reference:
 1. **kV:** compute `√Vr`, interpolate the gun table, and scale all lens excitations to keep focal lengths (I + rem ∝ √Vr). The scan deflection also scales with √Vr.
 2. **WD / focus:** hold the objective as excitation `k`, step it like `_gsp_step_focus`, and compute WD from the thin-lens image of the C2 crossover. Drive the DACs with the §5.6 encoding. Update the scan rotation (Focus Rotation) and the scan size (distance term) with WD.
 3. **Probe current:** implement §6.3. Compute α (auto-resolution: α_opt from Cs; or conjugate mode) and d = K_I/α, solve f1/f2 with the condenser solver, convert to currents with the crosstalk matrix, then to DACs with §5.6. Re-solve the objective for the WD afterwards.
@@ -369,15 +384,13 @@ The firmware currently uses a 4-point probe-current table at 5 kV (`eo.pc*`). Wi
 
 ## 10. Open items (decoding)
 
-- Optibeam modes other than auto-resolution and conjugate (0x5ef50, 0x5df00, HPSEM). Which mode the operator's "Optibeam on" uses by default (`_gsp_set_optibeam_mode` values).
+- Resolved by §6.7: the UI mode mapping, the beam-off 100 V states, the displayed-WD conversion, the condenser calibration and the gun table.
+- Why LEO-32 used the LaB6 gun table and the 0.90-ish condenser calibrations (PC-side; not needed to reproduce it).
+- VP: LEO-32 never knew when the column was in VP (switched from hpapp32), so its VP lens settings were the high-vacuum ones; `_set_lenses_for_HPSEM` was never used on this machine.
+- Low-kV anode tables: not captured (the UI selects the spacer only with the beam off).
 - The condition-layer correction tables (`_interpolate_condition_layer`, imported from the PC with `_gsp_import_condition_table` / `_gsp_import_probe_table`) and where the PC keeps them (user state files `*.MLC`, `current.mll` contain Optibeam data).
 - The exact length L in the scan deflection formula, and the reference angle subtracted from θ_C3 (`_calc_E3_dependents`).
 - The constants for the probe-size display terms beyond §6.2.
-- The emulator (§6.5, §6.6) reproduces the objective (given the GSP WD) and roughly C2, but not C1. All GSP-side start-up inputs are now accounted for, so the remaining gaps are on the PC side:
-  - the displayed-WD ↔ GSP-WD transformation (≈ 1.19·WD + 1.9 mm);
-  - what drives C1, including whether the PC loads a condition table at run time.
-
-  Both need either x86 decompilation of `leom.exe` / `m200.dll` (where `AP_WD` and `IMPORTCONDITIONTABLE` are handled) or measurements M2 and M8.
 
 ## 11. Measurements that would settle the model
 
@@ -405,5 +418,37 @@ python datavac.py "<drive>/Program Files/LEO Electron Microscopy Ltd/LEO-32/view
 python optics/column_model.py
 python optics/emu_driver.py          # runs LEO-32's GSP code, compares with the 5 kV captures
 python optics/mlc_compare.py "<drive>/Program Files/LEO Electron Microscopy Ltd/LEO-32/user" --csv optics/mlc_points.csv
+python optics/fit_capture.py --wdmap 1.19,1.9 --cal 0.9042,0.9042,0.991194 --fil 1 -v   # emulator vs captures
+python optics/fit_model.py                  # firmware model fit
+python optics/check_teensy.py COM18         # firmware model on the Teensy vs Python and captures
 ```
 GSP doubles are stored with their two 32-bit words swapped. `.cinit` holds the compiled lens records, calibration defaults, gun table and aperture table.
+
+## 13. The firmware column model **[C]**
+
+`firmware/leo_control/optics.cpp` (prototype and fit: `analysis/optics/optics_model.py`, `fit_model.py`) computes the six lens DAC words from the settled kV, the displayed WD (`op.wd`), the probe current, the Optibeam mode and the aperture:
+
+1. `√Vr` (kV clamped to ≥ 100 V); gun B and d₀ interpolated from the LaB6 / standard-anode table; d₀ × `eo.kd0`.
+2. Internal WD = (op.wd − `eo.wd_b`) / `eo.wd_a`, limited to 1–120 mm.
+3. Three passes of:
+   - objective: excitation imaging the C2 crossover onto the WD (§5.3), magnification m₃ = v/u;
+   - **Normal:** K = `eo.kn`·0.53·√(I/B); α = `eo.an`·((K² + K_λ²)/(3(0.278 Cs)²))^(1/8) (§6.2); condenser magnification M = K/α/(d₀·m₃). The C2 crossover z_t is placed so that the aperture (radius r at z = −0.16) defines α: z_ap − z_t = r(z_H3 − z_ap)/(α·v₃ − r). Then the condenser solver (§6.3). If C2 would need f < 3.6796 mm (or the aperture cannot reach α), C2 goes to that limit and C1 alone sets M. f₁ is limited to 4.9707–77.0 mm;
+   - **Depth:** C2 at 3.6796 mm; C1 by bisection so that d₀·M·α = `eo.kd`·0.53·√(I/B), with α = r/(z_ap − z₂)·u₃/v₃;
+   - **Auto resolution:** the probe current from `eo.ar2/5/10/20` (log-log), then Normal.
+4. Final objective solve, currents with the crosstalk matrix (§4) and `eo.cal1..3` / `eo.rem1..3`, DAC words (§5.6).
+
+Fitted constants (2026-11-15 captures): `eo.cal1` 0.93565, `eo.cal2` 0.9042, `eo.wd_a` 1.21696, `eo.wd_b` 1.876 mm, `eo.kn` 0.95935, `eo.an` 0.91561, `eo.kd` 12.787, `eo.kd0` 1.4625. `eo.cal3`, the remanences and the crosstalk are `Data.vac`'s.
+
+Agreement with the 124 settled captured states (coarse DAC counts; 1 count = 0.73 mA):
+
+| | C1 rms / max | C2 rms / max | Objective rms / max |
+|---|---|---|---|
+| All | 42 / 154 | 62 / 198 | 1.6 / 8 |
+| Normal (101) | 42 | 48–62 | 1.7 |
+| Depth (13) | 17 | 9 | 0.4 |
+
+The largest condenser differences sit at the edge between Normal and the C2 limit (100 pA or WD 8–10 mm at 20 kV), where LEO-32 blends more gradually. That is a few % of the lens current, a small change of probe current and none of focus.
+
+The firmware result is identical to the Python model for all 124 steps: `analysis/optics/check_teensy.py` runs them through the box's `optics` command. One computation takes about 2 ms on the Teensy.
+
+Operator controls (as LEO-32): `wd` (and `focus`, which the box converts to the WD giving that objective current), `probe`, `obeam normal|depth|auto` and `aperture 30|50`. The lenses are computed for the settled EHT **setpoint**, so with the beam off they are already right for the kV it will come on at. `eo.model 0` restores the previous behaviour (`eo.pc*` table and direct objective DACs).

@@ -5,6 +5,7 @@
 // change those settings and this module sends whatever changed.
 #pragma once
 #include <Arduino.h>
+#include "optics.h"
 
 enum ScanMode : uint8_t { SCAN_EXT = 0, SCAN_RASTER = 1, SCAN_LINE = 2, SCAN_SPOT = 3 };
 
@@ -23,7 +24,15 @@ public:
   void restartFrame();
 
   bool linkOk() const { return linkOk_; }
-  static bool probeRange(double& lo, double& hi);   // probe current range of the Optibeam table
+  static bool probeRange(double& lo, double& hi);   // probe current range accepted with Optibeam on
+  static void opticsParams(OpticsParams& p);         // column-model constants from the eo.* settings
+  bool model() const;                                // lenses from the column model (eo.model 1)
+  bool kvKnown() const { return kvUsed_ > 0; }
+  float kvUsed() const { return kvUsed_; }
+  const OpticsResult& optics() const { return opt_; }
+  bool opticsValid() const { return optValid_; }
+  // Displayed WD that puts the objective at code coarse*256 + fine (focus with eo.model 1); <0 if unknown.
+  double wdForFocus(double fine, double coarse) const;
   int  range() const { return range_; }
   const uint16_t* weights() const { return w_; }
   int  queued() const;
@@ -51,6 +60,10 @@ private:
   bool linkOk_ = false, calDirty_ = true, frozen_ = false, started_ = false;
   uint32_t lastHb_ = 0, hbFails_ = 0;
   float lineUs_ = 0, kvUsed_ = 0;
+  OpticsResult opt_ = {};
+  bool optValid_ = false;
+  double optIn_[5] = {0, 0, 0, 0, 0};
+  OpticsParams optP_ = {};
   // applied copies of the op.* values
   float aMag_ = -1, aRot_ = 1e9, aWd_ = -1, aTilt_ = 1e9, aSx_ = 1e9, aSy_ = 1e9;
   float aObjC_ = -1, aObjF_ = -1, aCond_[4] = {-1, -1, -1, -1}, aWob_ = -1, aDynf_ = 1e9;

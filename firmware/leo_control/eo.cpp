@@ -151,9 +151,7 @@ void Eo::applyPins() {
 
 static double relKv(double kv) { return kv * (1.0 + 0.978e-3 * kv); }
 
-// Optibeam: probe current -> condenser DACs, interpolated in log(probe current) through the
-// eo.pc* table (captured with LEO-32 at eo.pc_kvref), clamped to the table's range, optionally
-// scaled with relativistic kV. Each DAC is interpolated on its own.
+// eo.pc* table (eo.model 0), sorted by probe current.
 static int pcTable(double pa[6], double d[6][4]) {
   int n = 0;
   for (int i = 0; i < 6; i++) {
@@ -168,6 +166,7 @@ static int pcTable(double pa[6], double d[6][4]) {
 }
 
 bool Eo::probeRange(double& lo, double& hi) {
+  if (si(EO_MODEL)) { lo = sd(EO_PA_MIN); hi = sd(EO_PA_MAX); return true; }
   double pa[6], d[6][4];
   int n = pcTable(pa, d);
   if (!n) return false;
@@ -175,8 +174,48 @@ bool Eo::probeRange(double& lo, double& hi) {
   return true;
 }
 
+bool Eo::model() const { return si(EO_MODEL) && si(EO_OPTIBEAM); }
+
+void Eo::opticsParams(OpticsParams& p) {
+  for (int i = 0; i < 3; i++) { p.cal[i] = sd((SettingId)(EO_CAL1 + i)); p.rem[i] = sd((SettingId)(EO_REM1 + i)); }
+  p.xt = sd(EO_XTALK);
+  p.wdA = sd(EO_WD_A); p.wdB = sd(EO_WD_B) * 1e-3;
+  p.kN = sd(EO_KN); p.aN = sd(EO_AN); p.kD = sd(EO_KD); p.kd0 = sd(EO_KD0); p.thr = sd(EO_THR);
+  p.arPa[0] = sd(EO_AR2); p.arPa[1] = sd(EO_AR5); p.arPa[2] = sd(EO_AR10); p.arPa[3] = sd(EO_AR20);
+}
+
+double Eo::wdForFocus(double fine, double coarse) const {
+  if (!optValid_ || kvUsed_ <= 0) return -1;
+  OpticsParams p; opticsParams(p);
+  return Optics::wdForObjective(p, kvUsed_, opt_, coarse * 256.0 + fine);
+}
+
+// Optibeam. eo.model 1: the column model (optics.cpp) sets the condensers and the objective from the settled
+// kV, op.wd, op.probe_pa, op.obeam and op.aperture, as LEO-32 did; recomputed only when one of them (or a
+// model constant) changes. The kV is the EHT setpoint once its ramp has settled (eht.cpp): LEO-32 used the
+// supply's readback, so with the beam off it computed a 100 V column; the box commands the EHT itself, so the
+// lenses are already right when the beam comes on. eo.model 0: probe current -> condenser DACs, interpolated in
+// log(probe current) through the eo.pc* table (captured at eo.pc_kvref), each DAC on its own.
 void Eo::updateOptibeam() {
   if (!si(EO_OPTIBEAM)) return;
+  if (si(EO_MODEL)) {
+    if (kvUsed_ <= 0) return;
+    OpticsParams p; opticsParams(p);
+    double in[5] = { kvUsed_, sd(OP_WD), sd(OP_PROBE_PA), (double)si(OP_OBEAM), sd(OP_APERTURE) };
+    if (optValid_ && !memcmp(in, optIn_, sizeof in) && !memcmp(&p, &optP_, sizeof p)) return;
+    OpticsResult r;
+    if (!Optics::compute(p, in[0], in[1], in[2], (int)in[3], in[4], r)) return;
+    memcpy(optIn_, in, sizeof in); optP_ = p; opt_ = r; optValid_ = true;
+    if (si(OP_OBEAM) == OBEAM_AUTO && fabs(r.probePa - sd(OP_PROBE_PA)) > 1e-6) {
+      settingSet(OP_PROBE_PA, r.probePa);       // LEO-32 shows (and keeps) the current it picked
+      optIn_[2] = sd(OP_PROBE_PA);
+    }
+    const uint16_t c[4] = { r.c1c, r.c1f, r.c2c, r.c2f };
+    for (int j = 0; j < 4; j++) if (c[j] != sd((SettingId)(OP_COND0 + j))) settingSet(OP_COND0 + j, c[j]);
+    if (r.objc != sd(OP_OBJ_C)) settingSet(OP_OBJ_C, r.objc);
+    if (r.objf != sd(OP_OBJ_F)) settingSet(OP_OBJ_F, r.objf);
+    return;
+  }
   double pa[6], d[6][4];
   int n = pcTable(pa, d);
   if (!n) return;
@@ -523,7 +562,7 @@ void Eo::service(float kvSettled) {
   if (kvSettled > 0 && fabsf(kvSettled - kvUsed_) > 0.005f) {
     if (kvUsed_ > 0) {
       double ratio = sqrt(relKv(kvSettled) / relKv(kvUsed_));
-      if (si(EO_KV_OBJ)) settingSet(OP_OBJ_C, constrain(sd(OP_OBJ_C) * ratio, 0.0, 4095.0));
+      if (si(EO_KV_OBJ) && !model()) settingSet(OP_OBJ_C, constrain(sd(OP_OBJ_C) * ratio, 0.0, 4095.0));
       if (si(EO_KV_COND) && !si(EO_OPTIBEAM))
         for (int i = 0; i < 4; i++) settingSet(OP_COND0 + i, constrain(sd((SettingId)(OP_COND0 + i)) * ratio, 0.0, 4095.0));
     }

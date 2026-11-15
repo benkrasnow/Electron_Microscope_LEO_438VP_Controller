@@ -79,11 +79,14 @@ Each one sets an `op.*` setting. The subsystem modules follow the settings: the 
 | `coll <V>` | `op.coll_v` | SE collector bias |
 | `bright <n>` / `pm <ch> <n>` | `op.pm1..3` | PM HV (brightness = channel 1) |
 | `mag <x>` | `op.mag` | coil weights and range relays (park → range → 45 ms → weights); also sets the joystick pixel size `.SW` |
-| `rot <deg>`, `wd <mm>`, `tilt <deg>` | `op.rot`, `op.wd`, `op.tilt` | scan rotation, WD for the scan geometry, tilt correction (Y × cos tilt) |
-| `focus <fine> [coarse]` | `op.obj_f`, `op.obj_c` | objective DACs (read-modify-write like the original) |
+| `rot <deg>`, `wd <mm>`, `tilt <deg>` | `op.rot`, `op.wd`, `op.tilt` | scan rotation; WD as LEO-32 displayed it (with `eo.model 1` it sets the objective through the column model, and the scan geometry); tilt correction (Y × cos tilt) |
+| `focus <fine> [coarse]` | `op.wd` (`eo.model 1`) or `op.obj_f`, `op.obj_c` | objective setting. With the column model the box converts it to the WD that gives this objective current and sets `op.wd` (focusing and WD are the same thing, as in LEO-32); otherwise the objective DACs directly. Refused with the model until a kV has settled |
 | `stig <x> <y>` | `op.stig_x/y` | |
 | `shift <x> <y>` | `op.shift_x/y` | beam shift in image axes, ±2047 counts, rotated with the scan |
-| `probe <pA>` | `op.probe_pa` | probe current. Optibeam (`eo.optibeam 1`, always on for operators) sets the condenser from it: log interpolation through the `eo.pc*` table, limited to the table's range |
+| `probe <pA>` | `op.probe_pa` | probe current. Optibeam (`eo.optibeam 1`, always on for operators) sets the condensers from it: through the column model (`eo.model 1`, `eo.pa_min..eo.pa_max`) or by log interpolation through the `eo.pc*` table. Refused in Auto resolution |
+| `obeam normal\|depth\|auto` | `op.obeam` | Optibeam mode as in LEO-32: best resolution for the probe current, depth of field (small aperture angle), or Auto resolution (the box picks the probe current for the kV and keeps it afterwards) |
+| `aperture <µm>` | `op.aperture` | final aperture fitted on the column (30 / 50 µm strip); nothing senses it |
+| `optics <kV> <WD mm> <pA> <mode 0-2> <aperture µm>` | | runs the column model only and replies `dac` (C1 coarse/fine, C2 coarse/fine, objective coarse/fine), `amps`, `pa` and internal values; nothing is applied (test / UI preview) |
 | `cond <d0> <d1> <d2> <d3>` | `op.cond0..3` | condenser DACs directly; refused while `eo.optibeam = 1` |
 | `scan ext\|raster\|line\|spot` | `op.scan` | `ext` = OBI drives the external scan input |
 | `speed <0-15>` | `op.speed` | internal scan speed |
@@ -128,7 +131,8 @@ Moves need an initialised stage (`stg.req_home`). The joystick on the stage cont
  "stg":{"valid":true,"homed":true,"mv":false,"lim":false,"homing":false,
         "pos":[50,50,1,0,0],"c":[8388608,8286749,7323727,8388608,8388608]},
  "eo":{"link":true,"mode":"external","mag":100,"range":1,"speed":5,"rot":0,"wd":15,"tilt":0,
-       "objc":790,"focus":2234,"stigx":2048,"stigy":2048,"probe":300,"pcmin":50,"pcmax":1000,"obeam":true,"wob":0,"frz":false,"frames":0,"q":0,"line_us":2811},
+       "objc":790,"focus":2234,"stigx":2048,"stigy":2048,"probe":300,"pcmin":1,"pcmax":100000,"obeam":true,
+       "model":true,"obmode":0,"ap":50,"kvlens":5,"wob":0,"frz":false,"frames":0,"q":0,"line_us":2811},
  "btn":[0,0,0]}
 ```
 
@@ -146,7 +150,8 @@ Moves need an initialised stage (`stg.req_home`). The joystick on the stage cont
 | `eht.kv`, `eht.fil` | values actually sent (they lag the setpoints during ramps) |
 | `stg.pos` | X Y Z in mm, T R in degrees (UI coordinates); `stg.c` = raw counts |
 | `eo.link` | EO read-back check OK (chip 3 options returns the last value written) |
-| `eo.probe`, `eo.pcmin`, `eo.pcmax` | probe current setpoint and the calibrated range of the Optibeam table |
+| `eo.probe`, `eo.pcmin`, `eo.pcmax` | probe current setpoint (Auto resolution: the current the box picked) and the accepted range |
+| `eo.model`, `eo.obmode`, `eo.ap`, `eo.kvlens` | lenses from the column model; Optibeam mode 0 normal / 1 depth / 2 auto; aperture entered (µm); kV the lenses were computed for (settled EHT setpoint) |
 
 ## 5. Example session
 

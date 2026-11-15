@@ -1,6 +1,6 @@
 # Control box settings
 
-All 341 runtime settings, generated from `leo_control/settings.h` by `tools/gen_settings_doc.py`. Read and change them over USB with `get`, `set`, `list`, `default` (see PROTOCOL.md); they are kept in flash.
+All 364 runtime settings, generated from `leo_control/settings.h` by `tools/gen_settings_doc.py`. Read and change them over USB with `get`, `set`, `list`, `default` (see PROTOCOL.md); they are kept in flash.
 
 
 ## EHT / gun supply link
@@ -56,7 +56,7 @@ All 341 runtime settings, generated from `leo_control/settings.h` by `tools/gen_
 | `op.vp_pa` | 20 | 1 | 400 | Pa | VP chamber pressure target |
 | `op.mag` | 100 | 1 | 1e6 | x | magnification |
 | `op.rot` | 0 | -360 | 360 | deg | scan rotation |
-| `op.wd` | 15 | 1 | 60 | mm | working distance used for the scan geometry |
+| `op.wd` | 15 | 2 | 150 | mm | working distance as LEO-32 displayed it: sets the objective (eo.model 1) and the scan geometry |
 | `op.tilt` | 0 | -89 | 89 | deg | tilt correction angle (0 = off) |
 | `op.speed` | 5 | 0 | 15 |  | internal scan speed 0-15 |
 | `op.scan` | 0 | 0 | 3 |  | scan mode 0 external (OBI), 1 raster, 2 line, 3 spot |
@@ -68,7 +68,9 @@ All 341 runtime settings, generated from `leo_control/settings.h` by `tools/gen_
 | `op.cond1` | 182 | 0 | 4095 |  | condenser chip 0 DAC1 |
 | `op.cond2` | 23 | 0 | 4095 |  | condenser chip 0 DAC2 |
 | `op.cond3` | 218 | 0 | 4095 |  | condenser chip 0 DAC3 |
-| `op.probe_pa` | 300 | 1 | 100000 | pA | probe current (Optibeam: sets the condenser through the eo.pc* table) |
+| `op.probe_pa` | 300 | 1 | 100000 | pA | probe current (Optibeam: sets the condensers through the column model or the eo.pc* table) |
+| `op.obeam` | 0 | 0 | 2 |  | Optibeam mode 0 Normal (resolution) / 1 Depth / 2 Auto resolution (picks the probe current) |
+| `op.aperture` | 50 | 5 | 1000 | um | final aperture diameter entered by the operator (LEO-32 offered 30 and 50 um) |
 | `op.shift_x` | 0 | -2047 | 2047 |  | beam shift X (image axes, DAC counts) |
 | `op.shift_y` | 0 | -2047 | 2047 |  | beam shift Y |
 | `op.spot_x` | 32768 | 0 | 65535 |  | spot mode X position |
@@ -293,6 +295,27 @@ All 341 runtime settings, generated from `leo_control/settings.h` by `tools/gen_
 | `eo.kv_obj` | 1 | 0 | 1 |  | 1: scale objective coarse with sqrt(relativistic kV) on kV changes |
 | `eo.kv_cond` | 0 | 0 | 1 |  | 1: scale the condenser DACs with sqrt(kV) (only with eo.optibeam = 0) |
 | `eo.optibeam` | 1 | 0 | 1 |  | 1: condenser follows op.probe_pa through the eo.pc* table; 0: op.cond* set directly |
+| `eo.model` | 1 | 0 | 1 |  | 1: lenses from the column model (op.wd / op.probe_pa / op.obeam / op.aperture); 0: eo.pc* table and op.obj_* directly |
+| `eo.cal1` | 0.93565 | 0.3 | 3 |  | C1 calibration LEO-32 effectively used (fit; Data.vac 1.0597) |
+| `eo.cal2` | 0.9042 | 0.3 | 3 |  | C2 calibration (fit to the Depth-mode C2 ceiling; Data.vac 1.05973) |
+| `eo.cal3` | 0.991194 | 0.3 | 3 |  | objective calibration (Data.vac) |
+| `eo.rem1` | 0.0101 | -1 | 1 | A | C1 remanence (Data.vac) |
+| `eo.rem2` | 0.0101094 | -1 | 1 | A | C2 remanence (Data.vac) |
+| `eo.rem3` | 0.0107648 | -1 | 1 | A | objective remanence (Data.vac) |
+| `eo.xtalk` | 0.0422491 | -1 | 1 |  | C1 / C2 crosstalk (Data.vac) |
+| `eo.wd_a` | 1.21696 | 0.5 | 2 |  | model WD = (op.wd - eo.wd_b) / eo.wd_a (LEO-32 display scale; fit) |
+| `eo.wd_b` | 1.876 | -20 | 20 | mm | display WD offset (fit) |
+| `eo.kn` | 0.95935 | 0.01 | 100 |  | Normal mode probe-size constant (fit) |
+| `eo.an` | 0.91561 | 0.1 | 10 |  | Normal mode optimum-angle scale (fit) |
+| `eo.kd` | 12.78728 | 0.01 | 1000 |  | Depth mode constant (fit) |
+| `eo.kd0` | 1.46246 | 0.1 | 10 |  | gun source-size factor (fit) |
+| `eo.thr` | 0.95 | 0.1 | 0.999 |  | fraction of the aperture-limited angle above which C2 goes to its limit |
+| `eo.ar2` | 50 | 1 | 100000 | pA | Auto resolution probe current at 2 kV (LEO-32 UI 2026-11-15) |
+| `eo.ar5` | 70 | 1 | 100000 | pA | Auto resolution probe current at 5 kV |
+| `eo.ar10` | 90 | 1 | 100000 | pA | Auto resolution probe current at 10 kV |
+| `eo.ar20` | 150 | 1 | 100000 | pA | Auto resolution probe current at 20 kV (log-log interpolated; extrapolated above) |
+| `eo.pa_min` | 1 | 0.1 | 100000 | pA | lowest probe current accepted with eo.model 1 |
+| `eo.pa_max` | 100000 | 1 | 1e6 | pA | highest probe current accepted with eo.model 1 |
 | `eo.pc_kvref` | 5 | 0.5 | 30 | kV | kV at which the eo.pc* table was taken (captures: 5 kV) |
 | `eo.pc_kvexp` | 0 | -2 | 2 |  | condenser = table * (rel. kV / rel. kV_ref)^exp; 0 = no kV dependence |
 | `eo.pc1_pa` | 50 | 0 | 100000 | pA | Optibeam table point 1: probe current (0 = unused) |

@@ -144,6 +144,7 @@ void jsonStatus(char* buf, size_t n) {
     j.num("objc", sf(OP_OBJ_C)); j.num("focus", sf(OP_OBJ_F)); j.i("stigx", si(OP_STIG_X)); j.i("stigy", si(OP_STIG_Y));
     { double lo = 0, hi = 0; Eo::probeRange(lo, hi);
       j.num("probe", sf(OP_PROBE_PA)); j.num("pcmin", lo); j.num("pcmax", hi); j.bo("obeam", si(EO_OPTIBEAM)); }
+    j.bo("model", eo.model()); j.i("obmode", si(OP_OBEAM)); j.num("ap", sf(OP_APERTURE)); j.num("kvlens", eo.kvUsed(), 4);
     j.num("wob", sf(OP_WOB_PCT)); j.bo("frz", eo.frozen()); j.i("frames", eo.frames()); j.i("q", eo.queued());
     j.num("line_us", eo.linePeriodUs());
   j.close();
@@ -185,7 +186,9 @@ static const char* setOp(SettingId id, double v) {
     case OP_VP_PA: return machine.vpTarget(v);
     case OP_PROBE_PA: {
       double lo, hi;
-      if (si(EO_OPTIBEAM) && Eo::probeRange(lo, hi) && (v < lo || v > hi)) return "probe current outside the calibrated range (eo.pc* table)";
+      if (si(EO_OPTIBEAM) && Eo::probeRange(lo, hi) && (v < lo || v > hi))
+        return si(EO_MODEL) ? "probe current outside eo.pa_min..eo.pa_max" : "probe current outside the calibrated range (eo.pc* table)";
+      if (si(EO_OPTIBEAM) && si(OP_OBEAM) == OBEAM_AUTO) return "Auto resolution picks the probe current (obeam normal|depth first)";
       break;
     }
     default: break;
@@ -320,6 +323,13 @@ static void command(char* s) {
   }
   else if (!strcmp(c, "focus")) {
     if (n < 2 || !num(t[1], v)) { reply(id, false, "focus <fine> [coarse]"); return; }
+    if (eo.model()) {                // as LEO-32: focusing moves the objective, the displayed WD follows it
+      double wd = eo.wdForFocus(v, n >= 3 && num(t[2], v2) ? v2 : sd(OP_OBJ_C));
+      if (wd < 0) { reply(id, false, "no settled kV yet (beam off): focus follows the WD once the beam is on"); return; }
+      err = setOp(OP_WD, constrain(wd, SMETA[OP_WD].mn, SMETA[OP_WD].mx));
+      reply(id, !err, err);
+      return;
+    }
     err = setOp(OP_OBJ_F, v);
     if (!err && n >= 3 && num(t[2], v2)) err = setOp(OP_OBJ_C, v2);
     reply(id, !err, err);
@@ -330,6 +340,30 @@ static void command(char* s) {
     err = setOp(a, v);
     if (!err) err = setOp((SettingId)(a + 1), v2);
     reply(id, !err, err);
+  }
+  else if (!strcmp(c, "obeam")) {
+    static const char* modes[] = { "normal", "depth", "auto" };
+    int m = -1;
+    for (int i = 0; i < 3; i++) if (n >= 2 && (!strcmp(t[1], modes[i]) || (num(t[1], v) && (int)v == i))) m = i;
+    if (m < 0) { reply(id, false, "obeam normal|depth|auto"); return; }
+    err = setOp(OP_OBEAM, m); reply(id, !err, err);
+  }
+  else if (!strcmp(c, "aperture")) {
+    if (n < 2 || !num(t[1], v)) { reply(id, false, "aperture <um>"); return; }
+    err = setOp(OP_APERTURE, v); reply(id, !err, err);
+  }
+  else if (!strcmp(c, "optics")) {   // column model only, nothing applied: optics <kV> <WD mm> <pA> <mode 0-2> <aperture um>
+    double a[5];
+    for (int i = 0; i < 5; i++) if (n < 6 || !num(t[1 + i], a[i])) { reply(id, false, "optics <kV> <WD mm> <pA> <mode> <aperture um>"); return; }
+    OpticsParams p; Eo::opticsParams(p);
+    OpticsResult r;
+    if (!Optics::compute(p, a[0], a[1], a[2], (int)a[3], a[4], r)) { reply(id, false, "kV must be > 0"); return; }
+    char b[400]; J j(b, sizeof b); j.open(); j.i("r", id); j.bo("ok", true);
+    j.openArr("dac"); j.ai(r.c1c); j.ai(r.c1f); j.ai(r.c2c); j.ai(r.c2f); j.ai(r.objc); j.ai(r.objf); j.closeArr();
+    j.openArr("amps"); j.ad(r.i1, 6); j.ad(r.i2, 6); j.ad(r.i3, 6); j.closeArr();
+    j.num("pa", r.probePa, 5); j.num("f1", r.f1, 6); j.num("f2", r.f2, 6); j.num("k3", r.k3, 6); j.num("m3", r.m3, 5);
+    j.num("z2", r.z2, 6); j.num("wdint", r.wdInt, 6);
+    j.close(); out(b);
   }
   else if (!strcmp(c, "cond")) {
     if (si(EO_OPTIBEAM)) { reply(id, false, "Optibeam is on: set the probe current (eo.optibeam 0 for direct condenser values)"); return; }
@@ -399,7 +433,7 @@ static void command(char* s) {
   else if (!strcmp(c, "bootloader")) { reply(id, true); Serial.flush(); delay(20); _reboot_Teensyduino_(); }
   else if (!strcmp(c, "help")) {
     out("{\"t\":\"help\",\"cmds\":\"hello status tel get set list default save pump vent beam eht safe abort vp kv fil emis coll bright pm "
-        "mag rot wd tilt speed probe scan spot line focus stig shift cond wobble dynfocus freeze stage eo raw trace log time reboot bootloader\"}");
+        "mag rot wd tilt speed probe obeam aperture optics scan spot line focus stig shift cond wobble dynfocus freeze stage eo raw trace log time reboot bootloader\"}");
     reply(id, true);
   }
   else reply(id, false, "unknown command");

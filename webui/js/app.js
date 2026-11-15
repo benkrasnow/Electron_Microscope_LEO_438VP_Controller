@@ -166,6 +166,10 @@ function render() {
   if (eo.pcmax > 0) { probeRange = [eo.pcmin, eo.pcmax]; $("inProbe").min = eo.pcmin; $("inProbe").max = eo.pcmax; }
   setVal($("inProbe"), eo.probe !== undefined ? +(+eo.probe).toPrecision(4) : undefined);
   setVal($("slProbe"), eo.probe !== undefined ? probeToSlider(eo.probe) : undefined);
+  const obNames = ["normal", "depth", "auto"];
+  for (const b of $("segObeam").children) b.classList.toggle("on", b.dataset.ob === obNames[eo.obmode]);
+  for (const b of $("segAp").children) b.classList.toggle("on", +b.dataset.ap === +eo.ap);
+  $("slProbe").disabled = $("inProbe").disabled = eo.obmode === 2;   // Auto resolution picks the current
   $("filNow").textContent = eht.beam !== "off" && eht.beam !== "cooling" ? `now ${eht.fil} mA` : "";
   for (const b of $("kvPresets").children) b.classList.toggle("on", +b.dataset.kv === +eht.kvset);
 
@@ -300,7 +304,7 @@ sliderTo("slStigY", "oStigY", () => sendLatest("stig", `stig ${$("slStigX").valu
 $("slColl").oninput = (e) => { touch(e.target); touch($("inColl")); $("inColl").value = e.target.value; sendLatest("coll", `coll ${e.target.value}`); };
 $("inColl").addEventListener("change", (e) => { touch($("slColl")); $("slColl").value = e.target.value; });
 
-// Probe current in pA; the slider is logarithmic between the ends of the box's Optibeam table.
+// Probe current in pA; the slider is logarithmic over the range the box accepts (eo.pcmin..eo.pcmax).
 let probeRange = [50, 1000];
 const probeToSlider = (pa) => Math.round(1000 * Math.log(pa / probeRange[0]) / Math.log(probeRange[1] / probeRange[0]));
 const sliderToProbe = (v) => probeRange[0] * (probeRange[1] / probeRange[0]) ** (v / 1000);
@@ -318,6 +322,9 @@ $("inProbe").onchange = (e) => {
   $("slProbe").value = probeToSlider(pa);
   sendQ(`probe ${pa}`);
 };
+
+for (const b of $("segObeam").children) b.onclick = () => sendQ(`obeam ${b.dataset.ob}`);
+for (const b of $("segAp").children) b.onclick = () => sendQ(`aperture ${b.dataset.ap}`);
 
 // PMT voltage ("brightness" in LEO-32): PM HV channel 1 on the EHT set (.1 command), via the box's "bright".
 $("slPmt").oninput = (e) => { touch(e.target); touch($("inPmt")); $("inPmt").value = e.target.value; sendLatest("bright", `bright ${e.target.value}`); };

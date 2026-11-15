@@ -6,7 +6,7 @@ condensers I = ((coarse<<8) + fine + 2048) / 1048575 * 3 A, objective fine alrea
   python eo_capture_table.py [capture_dir] > eo_capture_2026-11-15.csv
 use = 1: settled state; use = 0: beam off (EHT readback 0, computed at 100 V), intermediate or discarded.
 """
-import os, re, sys
+import os, re, sys, csv
 
 CAP = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '../../scope_captures')
 
@@ -81,7 +81,8 @@ def amps(c, f, objective=False):
 
 cols = ['block', 'shot', 'kv', 'wd_mm', 'probe_pa', 'mode', 'aperture_um', 'use', 'note',
         'c1c', 'c1f', 'c2c', 'c2f', 'obc', 'obf', 'I_c1', 'I_c2', 'I_obj']
-print(','.join(cols))
+out = csv.writer(sys.stdout, lineterminator='\n')
+out.writerow(cols)
 for (block, shot), (kv, wd, pa, mode, ap, use, note) in sorted(S.items()):
     p = os.path.join(CAP, f'{block}_{shot:02d}_ch3.txt')
     v = last_writes(p) if os.path.exists(p) else {}
@@ -89,4 +90,4 @@ for (block, shot), (kv, wd, pa, mode, ap, use, note) in sorted(S.items()):
     g = v.get
     row = [block, shot, kv, wd, pa, mode, ap, use, note, g('c1c'), g('c1f'), g('c2c'), g('c2f'), g('obc'), g('obf'),
            amps(g('c1c'), g('c1f')), amps(g('c2c'), g('c2f')), amps(g('obc'), g('obf'), True)]
-    print(','.join('' if x is None else str(x) for x in row))
+    out.writerow(['' if x is None else x for x in row])
