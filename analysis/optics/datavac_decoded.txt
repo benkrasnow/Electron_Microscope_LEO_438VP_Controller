@@ -1,0 +1,213 @@
+STAGE    0x0010 +0x00b u1  No                               1
+STAGE    0x0010 +0x00b u1  Move Z on Vent                   1
+STAGE    0x000f +0x00a u1  Not Fitted                       0
+STAGE    0x000f +0x00a u1  Rotate Limit                     0
+VACUUM   0x001b +0x00a u1  Motorised                        0
+VACUUM   0x001b +0x00a u1  WDX Gate Valve                   0
+VACUUM   0x001c +0x00b u1  Not Fitted                       0
+VACUUM   0x001c +0x00b u1  IXI Backplate                    0
+VACUUM   0x001e +0x00d u1  Quick                            0
+VACUUM   0x001e +0x00d u1  Bakeout                          0
+VACUUM   0x001f +0x00e f4  User Bakeout Heating Time (hours) 0
+VACUUM   0x0023 +0x012 f4  User Bakeout Cooling Time (hours) 0
+VACUUM   0x001d +0x00c u1  No                               0
+VACUUM   0x001d +0x00c u1  Partial Vent                     0
+EO       0x0031 +0x00a f4  Stig X Lower                     -31
+EO       0x0035 +0x00e f4  Stig Y Upper                     -26
+EO       0x0039 +0x012 f4  Stig Y Lower                     -19
+EO       0x003d +0x016 f4  Mag Comp Amp[0]                  42.1001
+EO       0x0041 +0x01a f4  Mag Comp Amp[1]                  41.3001
+EO       0x0045 +0x01e f4  Mag Comp Amp[2]                  41.2001
+EO       0x0049 +0x022 f4  Mag Comp Amp[3]                  41
+EO       0x004d +0x026 f4  Mag Comp Amp[4]                  41.1
+EO       0x0051 +0x02a f4  Mag Comp Amp[5]                  40.9
+EO       0x0055 +0x02e f4  Mag Comp Amp[6]                  47.3
+EO       0x0059 +0x032 f4  Mag Comp Amp[7]                  47.3
+EO       0x005d +0x036 f4  Mag Comp Amp[8]                  47.6
+EO       0x0061 +0x03a f4  Mag Comp Amp[9]                  47.3001
+EO       0x0065 +0x03e f4  Mag Comp Amp[10]                 100
+EO       0x0069 +0x042 f4  Mag Comp Amp[11]                 100
+EO       0x006d +0x046 f4  Mag Comp Amp[12]                 100
+EO       0x0071 +0x04a f4  Mag Comp Amp[13]                 100
+EO       0x0075 +0x04e f4  Mag Comp Amp[14]                 100
+EO       0x0079 +0x052 f4  Mag Comp Amp[15]                 100
+EO       0x007d +0x056 i2  Mag Comp Off[0]                  62
+EO       0x007f +0x058 i2  Mag Comp Off[1]                  75
+EO       0x0081 +0x05a i2  Mag Comp Off[2]                  75
+EO       0x0083 +0x05c i2  Mag Comp Off[3]                  72
+EO       0x0085 +0x05e i2  Mag Comp Off[4]                  66
+EO       0x0087 +0x060 i2  Mag Comp Off[5]                  70
+EO       0x0089 +0x062 i2  Mag Comp Off[6]                  70
+EO       0x008b +0x064 i2  Mag Comp Off[7]                  68
+EO       0x008d +0x066 i2  Mag Comp Off[8]                  63
+EO       0x008f +0x068 i2  Mag Comp Off[9]                  65
+EO       0x0091 +0x06a i2  Mag Comp Off[10]                 0
+EO       0x0093 +0x06c i2  Mag Comp Off[11]                 0
+EO       0x0095 +0x06e i2  Mag Comp Off[12]                 0
+EO       0x0097 +0x070 i2  Mag Comp Off[13]                 0
+EO       0x0099 +0x072 i2  Mag Comp Off[14]                 0
+EO       0x009b +0x074 i2  Mag Comp Off[15]                 0
+EO       0x009d +0x076 f4  Tip position                     1.0597
+EO       0x00a1 +0x07a f4  Tip radius                       0.0101
+EO       0x009d +0x076 f4  C1 Cal                           1.0597
+EO       0x00a1 +0x07a f4  C1 Rem                           0.0101
+EO       0x00a5 +0x07e f4  C2 Cal                           1.05973
+EO       0x00a9 +0x082 f4  C2 Rem                           0.0101094
+EO       0x00ad +0x086 f4  C3 Cal                           0.991194
+EO       0x00b1 +0x08a f4  C3 Rem                           0.0107648
+EO       0x00b5 +0x08e f4  Mag Cal X 1                      29.7475
+EO       0x00c9 +0x0a2 f4  Mag Cal Y 1                      30.6304
+EO       0x00b9 +0x092 f4  Mag Cal X 2                      29.7475
+EO       0x00cd +0x0a6 f4  Mag Cal Y 2                      30.6304
+EO       0x00bd +0x096 f4  Mag Cal X 3                      29.7475
+EO       0x00d1 +0x0aa f4  Mag Cal Y 3                      30.6304
+EO       0x00c1 +0x09a f4  Mag Cal X 4                      29.7475
+EO       0x00d5 +0x0ae f4  Mag Cal Y 4                      30.6304
+EO       0x00c5 +0x09e f4  Mag Cal X 5                      29.7475
+EO       0x00d9 +0x0b2 f4  Mag Cal Y 5                      30.6304
+EO       0x00dd +0x0b6 f4  Dual Mag Offset X                0
+EO       0x00e1 +0x0ba f4  Dual Mag Offset Y                0
+EO       0x00e5 +0x0be f4  Focus Rotation                   -9
+EO       0x00e9 +0x0c2 f4  Scan Orthog                      1.5
+EO       0x00ed +0x0c6 u1  LEO 440                          3
+EO       0x00ed +0x0c6 u1  Column Type                      3
+EO       0x00ee +0x0c7 f4  Angular Intensity                0.0422491
+EO       0x00f2 +0x0cb f4  FE parameter IB1                 0.0422491
+EO       0x00ee +0x0c7 f4  X Talk 12                        0.0422491
+EO       0x00f2 +0x0cb f4  X Talk 21                        0.0422491
+EO       0x0138 +0x111 u1  Current Aperture                 1
+EO       0x0139 +0x112 f4  Beam Shift Cal X                 0.0511623
+EO       0x013d +0x116 f4  Beam Shift Cal Y                 0.823529
+EO       0x0141 +0x11a f4  Dual Mag Gain X                  95.5
+EO       0x0145 +0x11e f4  Dual Mag Gain Y                  3.9
+EO       0x0141 +0x11a f4  Dual Mag Slope                   95.5
+EO       0x0145 +0x11e f4  Dual Mag Y Slope                 3.9
+EO       0x0149 +0x122 f4  Stereo Rotate                    0
+EO       0x014d +0x126 f4  Microshift Mag                   0.121118
+EO       0x0151 +0x12a f4  Microshift Lever                 0.178585
+EO       0x004b +0x024 i2  Aperture Number                  16932
+EO       0x0031 +0x00a i2       Gun Coarse Y                0
+EO       0x0033 +0x00c f4       Aperture Coarse X           6.95829e-41
+EO       0x0037 +0x010 f4       Aperture Coarse Y           6.95268e-41
+EO       0x003b +0x014 f4       Gun Fine X                  3.00763e+23
+EO       0x003f +0x018 f4       Gun Fine Y                  4.61606e-08
+EO       0x0043 +0x01c f4       Aperture Fine X             -1.19673e+08
+EO       0x0047 +0x020 f4       Aperture Fine Y             1.12575e-39
+EO       0x00f6 +0x0cf f4  Aperture 1 Diameter              3e-05
+EO       0x00fa +0x0d3 f4  Aperture 1 X                     0
+EO       0x00fe +0x0d7 f4  Aperture 1 Y                     0
+EO       0x0102 +0x0db i2  Aperture 1 Clean                 0
+EO       0x0104 +0x0dd f4  Aperture 2 Diameter              5e-05
+EO       0x0108 +0x0e1 f4  Aperture 2 X                     0
+EO       0x010c +0x0e5 f4  Aperture 2 Y                     0.003
+EO       0x0110 +0x0e9 i2  Aperture 2 Clean                 0
+EO       0x0112 +0x0eb f4  Aperture 3 Diameter              0.00075
+EO       0x0116 +0x0ef f4  Aperture 3 X                     0
+EO       0x011a +0x0f3 f4  Aperture 3 Y                     0.007
+EO       0x011e +0x0f7 i2  Aperture 3 Clean                 0
+EO       0x0120 +0x0f9 f4  Aperture 4 Diameter              3e-11
+EO       0x0124 +0x0fd f4  Aperture 4 X                     0
+EO       0x0128 +0x101 f4  Aperture 4 Y                     0
+EO       0x012c +0x105 i2  Aperture 4 Clean                 1
+EO       0x0192 +0x16b f4  EBBU Aperture 1 Diameter         0.0001
+EO       0x0196 +0x16f f4  EBBU Aperture 1 X                0.00737
+EO       0x019a +0x173 f4  EBBU Aperture 1 Y                0.00145
+EO       0x019e +0x177 i2  EBBU Aperture 1 Clean            0
+EO       0x01a0 +0x179 f4  EBBU Aperture 2 Diameter         0.0001
+EO       0x01a4 +0x17d f4  EBBU Aperture 2 X                0.00737
+EO       0x01a8 +0x181 f4  EBBU Aperture 2 Y                0.00145
+EO       0x01ac +0x185 i2  EBBU Aperture 2 Clean            0
+EO       0x01ae +0x187 f4  EBBU Aperture 3 Diameter         0.0001
+EO       0x01b2 +0x18b f4  EBBU Aperture 3 X                0.00737
+EO       0x01b6 +0x18f f4  EBBU Aperture 3 Y                0.00145
+EO       0x01ba +0x193 i2  EBBU Aperture 3 Clean            0
+EO       0x01bc +0x195 f4  Defining Aperture  Diameter      0.0001
+EO       0x01c0 +0x199 f4  Defining Aperture  X             0.00575
+EO       0x01c4 +0x19d f4  Defining Aperture  Y             0.0065
+EO       0x01c8 +0x1a1 i2  Defining Aperture Film Type      0
+EO       0x0155 +0x12e u1  EBBU present                     0
+EO       0x0156 +0x12f f4  Conjugate Position               -0.164
+EO       0x0192 +0x16b f4  Fixed Aperture 1 Diameter        0.0001
+EO       0x01a0 +0x179 f4  Fixed Aperture 2 Diameter        0.0001
+EO       0x01ae +0x187 f4  Fixed Aperture 3 Diameter        0.0001
+EO       0x01f2 +0x1cb u1  Not Fitted                       0
+EO       0x01f2 +0x1cb u1  Fixed Aperture                   0
+EO       0x015a +0x133 f4  Mag Range 1 Offset Cal X         40
+EO       0x016e +0x147 f4  Mag Range 1 Offset Cal Y         -70
+EO       0x015e +0x137 f4  Mag Range 2 Offset Cal X         40
+EO       0x0172 +0x14b f4  Mag Range 2 Offset Cal Y         -90
+EO       0x0162 +0x13b f4  Mag Range 1 Gain Cal X           93
+EO       0x0176 +0x14f f4  Mag Range 1 Gain Cal Y           -117
+EO       0x0166 +0x13f f4  Mag Range 2 Gain Cal X           110
+EO       0x017a +0x153 f4  Mag Range 2 Gain Cal Y           40
+EO       0x015a +0x133 f4  Mag Range Cal X 1                40
+EO       0x016e +0x147 f4  Mag Range Cal Y 1                -70
+EO       0x015e +0x137 f4  Mag Range Cal X 2                40
+EO       0x0172 +0x14b f4  Mag Range Cal Y 2                -90
+EO       0x0162 +0x13b f4  Mag Range Cal X 3                93
+EO       0x0176 +0x14f f4  Mag Range Cal Y 3                -117
+EO       0x0166 +0x13f f4  Mag Range Cal X 4                110
+EO       0x017a +0x153 f4  Mag Range Cal Y 4                40
+EO       0x016a +0x143 f4  Mag Range Cal X 5                190
+EO       0x017e +0x157 f4  Mag Range Cal Y 5                253
+EO       0x0182 +0x15b f4  Gun Upper X                      0
+EO       0x0186 +0x15f f4  Gun Upper Y                      0
+EO       0x018a +0x163 f4  Gun Lower X                      0
+EO       0x018e +0x167 f4  Gun Lower Y                      0
+EO       0x0182 +0x15b f4  Gun Shift X                      0
+EO       0x0186 +0x15f f4  Gun Shift Y                      0
+EO       0x018a +0x163 f4  Gun Tilt  X                      0
+EO       0x018e +0x167 f4  Gun Tilt  Y                      0
+EO       0x01f3 +0x1cc i2  Emission Centre X                512
+EO       0x01f5 +0x1ce i2  Emission Centre Y                384
+EO       0x03c7 +0x3a0 f4  User Cal Factor X                1000
+EO       0x03cb +0x3a4 f4  User Cal Factor Y                1000
+MASTER   0x03d9 +0x00a u1  No                               1
+MASTER   0x03d9 +0x00a u1  Fitted                           1
+MASTER   0x03da +0x00b u1  50 MilliVolts                    0
+MASTER   0x03da +0x00b u1  Signal Type                      0
+MASTER   0x03db +0x00c u1  nothing                          1
+MASTER   0x03db +0x00c u1  any PM Supply                    1
+MASTER   0x03db +0x00c u1  PM1 Supply                       1
+MASTER   0x03db +0x00c u1  PM2 Supply                       1
+MASTER   0x03db +0x00c u1  PM3 Supply                       1
+MASTER   0x03db +0x00c u1  BSD Amplifier                    1
+MASTER   0x03db +0x00c u1  SCM Amplifier                    1
+MASTER   0x03db +0x00c u1  Undefined                        1
+MASTER   0x03dc +0x00d u1  nothing                          2
+MASTER   0x03dc +0x00d u1  PM1 Supply                       2
+MASTER   0x03dc +0x00d u1  PM2 Supply                       2
+MASTER   0x03dc +0x00d u1  PM3 Supply                       2
+MASTER   0x03dc +0x00d u1  BSD Amplifier                    2
+MASTER   0x03dc +0x00d u1  SCM Amplifier                    2
+MASTER   0x03dd +0x00e u1  Connected To Port                0
+MASTER   0x03de +0x00f u1  None                             0
+MASTER   0x03de +0x00f u1  TV Mode                          0
+MASTER   0x0501 +0x132 u1  Fact Password 1                  0
+MASTER   0x0502 +0x133 u1  Fact Password 2                  0
+MASTER   0x0503 +0x134 u1  Eng  Password 1                  0
+MASTER   0x0504 +0x135 u1  Eng  Password 2                  0
+MASTER   0x0505 +0x136 u1  User Password 1                  0
+MASTER   0x0506 +0x137 u1  User Password 2                  0
+MASTER   0x0507 +0x138 u1  LEO 420                          10
+MASTER   0x0549 +0x17a u1  PM 2 Fitted                      0
+MASTER   0x054a +0x17b u1  PM 3 Fitted                      0
+MASTER   0x054b +0x17c i2  C1 SN A                          0
+MASTER   0x054d +0x17e i2  C1 SN B                          0
+MASTER   0x054f +0x180 i2  C2 SN A                          0
+MASTER   0x0551 +0x182 i2  C2 SN B                          0
+MASTER   0x0553 +0x184 u1  Max X Ray Windows                1
+EHT      0x05bc +0x00b f4  Filament 3 Amps                  3.23
+EHT      0x05d4 +0x023 f4  Voltage Offset                   17
+EHT      0x05f0 +0x03f u1  Adjust Anode                     0
+EHT      0x05e0 +0x02f f4  Nominal Extractor V              3000
+EHT      0x05e8 +0x037 f4  Nominal Fil I                    2
+EHT      0x05ec +0x03b f4  Nominal extractor I              0.0002
+EHT      0x0605 +0x054 u1  Conditioning State               2
+EHT      0x0606 +0x055 u1  Leave Beam On                    0
+EHT      0x0607 +0x056 f4  Minimum Extractor voltage        0
+EHT      0x060b +0x05a f4  Maximum Extractor voltage        0
+EHT      0x060f +0x05e f4  Calibration @ 0.1 KV             0
+EHT      0x0613 +0x062 f4  Calibration @ 10  KV             0
+EHT      0x0617 +0x066 f4  Calibration @ 24  KV             0
+EHT      0x061b +0x06a f4  Calibration @ 30  KV             0
