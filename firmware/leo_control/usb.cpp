@@ -133,7 +133,9 @@ void jsonStatus(char* buf, size_t n) {
   j.open("stg");
     j.bo("valid", stg.sdValid()); j.bo("homed", stg.homed()); j.bo("mv", stg.moving()); j.bo("lim", stg.limitActive());
     j.bo("homing", stg.homing());
-    j.openArr("pos"); for (int a = 0; a < 5; a++) j.ad(StgVac::toUnits(a, stg.axis(a).pos), 7); j.closeArr();
+    j.openArr("pos");
+    for (int a = 0; a < 5; a++) { if (stg.sdValid()) j.ad(StgVac::toUnits(a, stg.axis(a).pos), 7); else { j.sep(); j.raw("null"); } }
+    j.closeArr();
     j.openArr("c"); for (int a = 0; a < 5; a++) j.ai(stg.axis(a).pos); j.closeArr();
   j.close();
   j.open("eo");

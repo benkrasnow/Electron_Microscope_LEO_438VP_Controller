@@ -74,7 +74,11 @@ static uint32_t lastLed = 0;
 
 void setup() {
   pinMode(PIN_LED, OUTPUT);
-  for (int i = 0; i < 3; i++) pinMode(BTN_PIN[i], INPUT);   // external 10k pull-ups and RC on the board
+  // External 10k pull-ups and RC on the board; the internal pull-up keeps a bare Teensy quiet.
+  // A button already held at power-up does not act until it is released and pressed again.
+  for (int i = 0; i < 3; i++) pinMode(BTN_PIN[i], INPUT_PULLUP);
+  delay(2);
+  for (int i = 0; i < 3; i++) btnStable[i] = btnRaw[i] = !digitalReadFast(BTN_PIN[i]);
   usbBegin();
   settingsBegin();
   logf(LV_INFO, "sys", "%s %s start", FW_NAME, FW_VERSION);
