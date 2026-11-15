@@ -4,7 +4,7 @@
 
 const PJRC_VID = 0x16C0;
 
-export class Teensy extends EventTarget {
+class Teensy extends EventTarget {
   constructor() {
     super();
     this.port = null;

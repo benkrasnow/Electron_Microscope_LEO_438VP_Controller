@@ -1,3 +1,5 @@
+// Loaded as a normal script; app.js starts it as a Web Worker from this function's source.
+function obiWorkerMain() {
 // OBI acquisition worker: WebSocket to the bridge (/obi), OBI binary protocol, frame assembly.
 // Runs off the main thread so a busy UI never stalls the data stream.
 //
@@ -181,3 +183,4 @@ onmessage = (ev) => {
       break;
   }
 };
+}

@@ -1,7 +1,7 @@
 // Uncompressed single-strip grayscale TIFF (8 or 16 bit, little-endian) with the acquisition
 // parameters in ImageDescription, readable by ImageJ / Fiji and most image tools.
 
-export function encodeTiff(w, h, bits, pixels, description) {
+function encodeTiff(w, h, bits, pixels, description) {
   const desc = new TextEncoder().encode(description + "\0");
   const bpp = bits / 8, imgBytes = w * h * bpp;
   const tags = [

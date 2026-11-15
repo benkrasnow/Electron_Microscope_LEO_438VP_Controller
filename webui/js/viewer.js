@@ -13,7 +13,7 @@ const FS16 = `#version 300 es
 precision highp float; precision highp usampler2D; in vec2 uv; out vec4 o; uniform usampler2D t; uniform float lo, hi, gam;
 void main() { float v = float(texture(t, uv).r) / 65535.0; v = clamp((v - lo) / max(hi - lo, 1e-6), 0.0, 1.0); o = vec4(vec3(pow(v, gam)), 1.0); }`;
 
-export class Viewer {
+class Viewer {
   constructor(canvas) {
     this.c = canvas;
     const gl = this.gl = canvas.getContext("webgl2", { antialias: false, preserveDrawingBuffer: true });
@@ -97,7 +97,7 @@ export class Viewer {
 }
 
 // Percentile window over a frame (sampled), for auto contrast. Returns normalised [lo, hi].
-export function autoWindow(data, bits, lowPct = 0.5, highPct = 99.5) {
+function autoWindow(data, bits, lowPct = 0.5, highPct = 99.5) {
   const a = bits === 16 ? new Uint16Array(data) : new Uint8Array(data);
   const shift = bits === 16 ? 8 : 0, hist = new Uint32Array(256);
   const stride = Math.max(1, Math.floor(a.length / 200000));

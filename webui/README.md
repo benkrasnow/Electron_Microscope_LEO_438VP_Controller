@@ -16,10 +16,12 @@ This is the operator interface for the microscope. It runs in **Chrome or Edge**
    python webui/bridge.py
    ```
    It needs only the Python standard library. Options: `--port 8438`, `--obi-host`, `--obi-port 2224`.
-3. Open **http://localhost:8438** in Chrome or Edge. Always use this address rather than opening `index.html` as a file: the browser only remembers the serial-port permission for a stable origin.
+3. Open the page in Chrome or Edge, either way:
+   - **http://localhost:8438** (served by the bridge). Recommended: the browser remembers the serial-port permission, so the page reconnects to the control box by itself.
+   - `index.html` opened straight from disk. This also works, using plain scripts and a worker built in-page, and imaging reaches the bridge at `ws://localhost:8438`. The browser may ask for the serial port again after each reload.
 4. Click **Control box** in the top bar and pick the Teensy. After the first time, the page reconnects to it automatically, including after an unplug and replug.
 
-The bridge relays bytes and does nothing else. It does not have to be running for the control-box functions, but the page must be served from it (or from any `http://localhost` server) for Web Serial permissions to persist.
+The bridge relays bytes and does nothing else. The control-box functions work without it; only imaging needs it.
 
 ## Operator page
 
@@ -64,8 +66,9 @@ Page preferences are kept in the browser (`localStorage`). Machine settings live
 | `bridge.py` | static file server + WebSocket ↔ TCP relay (standard library only) |
 | `index.html`, `css/app.css` | layout and styling |
 | `js/app.js` | page logic: status rendering, controls, imaging, developer tools |
+| (all scripts) | plain scripts, not ES modules, so the page also runs from `file://` |
 | `js/teensy.js` | Web Serial client for the control box (command ids, replies, telemetry, auto-reconnect) |
-| `js/obi-worker.js` | Web Worker: OBI binary protocol (Synchronize / RasterRegion / RasterPixelRun / Flush), frame parsing with sync-cookie checks, demo source |
+| `js/obi-worker.js` | Web Worker (started from a Blob of `obiWorkerMain`): OBI binary protocol (Synchronize / RasterRegion / RasterPixelRun / Flush), frame parsing with sync-cookie checks, demo source |
 | `js/viewer.js` | WebGL2 display (8-bit and 16-bit textures, display window in the shader), auto contrast |
 | `js/tiff.js` | 8/16-bit TIFF writer |
 | `tools/mock_obi.py` | stand-in OBI TCP server for testing without a Glasgow (`--pace 0` = as fast as possible) |

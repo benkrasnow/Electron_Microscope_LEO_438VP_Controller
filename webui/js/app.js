@@ -1,13 +1,13 @@
+(() => {
 // LEO 438VP operator page: control box over Web Serial, OBI imaging through the bridge (worker),
 // WebGL display, and the developer tools.
-import { Teensy } from "./teensy.js";
-import { Viewer, autoWindow } from "./viewer.js";
-import { encodeTiff } from "./tiff.js";
 
 const $ = (id) => document.getElementById(id);
 const box = new Teensy();
 const viewer = new Viewer($("canvas"));
-const worker = new Worker("js/obi-worker.js");
+// The worker is built from in-page code (obi-worker.js defines obiWorkerMain), so it also runs
+// when the page is opened straight from disk, where file-based workers are blocked.
+const worker = new Worker(URL.createObjectURL(new Blob([`(${obiWorkerMain.toString()})();`], { type: "text/javascript" })));
 let st = null;                 // last status from the box
 let lastFrame = null;          // {w,h,bits,data}
 let live = false, capturing = false, resumeLive = false;
@@ -293,7 +293,7 @@ function stopLive() { live = false; worker.postMessage({ type: "stop" }); update
 function updateScanButtons() {
   $("btnLive").classList.toggle("on", live); $("btnFreeze").classList.toggle("on", !live);
   $("emptyMsg").innerHTML = obiState.demo ? "Demo image source: press <b>Live</b>." :
-    !obiState.bridge ? "Start <code>python webui/bridge.py</code> and open this page from <code>http://localhost:8438</code>." :
+    !obiState.bridge ? "Start <code>python webui/bridge.py</code> (it relays the OBI data to this page)." :
     !obiState.obi ? "Bridge running; waiting for the OBI applet (TCP 2224)." : "Press <b>Live</b> to start scanning.";
 }
 $("btnLive").onclick = startLive;
@@ -554,10 +554,12 @@ $("btnObiAbort").onclick = () => { stopLive(); worker.postMessage({ type: "abort
 
 // ---------------------------------------------------------------- start
 window.leo = { box, viewer, worker, prefs };   // for the browser console
-const obiUrl = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host || "localhost:8438"}/obi`;
-if (location.protocol.startsWith("http")) worker.postMessage({ type: "connect", url: obiUrl });
+// Served by the bridge: same host. Opened from disk: the bridge on its default port.
+const obiUrl = location.protocol.startsWith("http") ? `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/obi` : "ws://localhost:8438/obi";
+worker.postMessage({ type: "connect", url: obiUrl });
 if (prefs.demo) worker.postMessage({ type: "demo", on: true });
 updateScanButtons();
 render();
 if (!box.supported) { $("lastEvent").textContent = "This browser has no Web Serial: open the page in Chrome or Edge"; chip($("btnBox"), "bad"); }
 else box.autoConnect().then((ok) => { if (!ok) chip($("btnBox"), "bad"); });
+})();
