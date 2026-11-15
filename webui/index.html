@@ -52,6 +52,11 @@
         </select>
       </label>
       <span class="sep"></span>
+      <label class="tool focus" title="Focus = working distance: the objective is set for the WD shown. Wheel on the image: fine focus">Focus
+        <input type="range" id="slFocus" min="2" max="60" step="0.01">
+        <input id="inFocus" type="number" min="2" max="150" step="0.01"><span class="unit">mm WD</span>
+      </label>
+      <span class="sep"></span>
       <label class="tool">Photo
         <select id="selPhoto">
           <option value="1024x768">1024×768</option>
@@ -181,7 +186,6 @@
         <label for="inMag">Mag</label>
         <div class="num"><button class="step" data-mul="0.5" data-for="inMag">÷2</button><input id="inMag" type="number" min="10" max="500000" step="1"><button class="step" data-mul="2" data-for="inMag">×2</button><span class="unit">×</span></div>
       </div>
-      <div class="slider"><label>Focus</label><input type="range" id="slFocus" min="0" max="4095" step="1"><output id="oFocus"></output></div>
       <div class="slider"><label>Stig X</label><input type="range" id="slStigX" min="0" max="4095" step="1"><output id="oStigX"></output></div>
       <div class="slider"><label>Stig Y</label><input type="range" id="slStigY" min="0" max="4095" step="1"><output id="oStigY"></output></div>
       <div class="row2">
@@ -191,7 +195,6 @@
       <details class="more">
         <summary>Scan geometry</summary>
         <div class="field inline"><label for="inRot">Rotation</label><div class="num"><input id="inRot" type="number" min="-360" max="360" step="1"><span class="unit">°</span></div></div>
-        <div class="field inline"><label for="inWd">WD</label><div class="num"><input id="inWd" type="number" min="2" max="150" step="0.1" title="Sets the objective: same as focusing"><span class="unit">mm</span></div></div>
         <div class="field inline"><label for="inTilt">Tilt corr.</label><div class="num"><input id="inTilt" type="number" min="-89" max="89" step="1"><span class="unit">°</span></div></div>
         <div class="field inline"><label>Beam shift</label><div class="num"><input id="inShX" type="number" min="-2047" max="2047" step="10" title="X"><input id="inShY" type="number" min="-2047" max="2047" step="10" title="Y"></div></div>
       </details>
@@ -312,7 +315,7 @@
         <div class="field inline"><label>Dwell unit</label><div class="num"><input id="pDwellUnit" type="number" min="1" step="0.01"><span class="unit">ns / count</span></div></div>
         <div class="field inline"><label>Bits (live)</label><select id="pBits"><option value="8">8</option><option value="16">16</option></select></div>
         <div class="field inline"><label>HFW at 1×</label><div class="num"><input id="pHfw1" type="number" min="1" step="1"><span class="unit">mm</span></div></div>
-        <div class="field inline"><label>Focus / notch</label><div class="num"><input id="pFocusStep" type="number" min="0.1" step="0.1"><span class="unit">counts @100×</span></div></div>
+        <div class="field inline"><label>Focus / notch</label><div class="num"><input id="pFocusStep" type="number" min="0.001" step="0.01"><span class="unit">mm WD @100× (÷ mag/100)</span></div></div>
         <div class="field inline"><label>Stig / notch</label><div class="num"><input id="pStigStep" type="number" min="1" step="1"><span class="unit">counts</span></div></div>
         <div class="field inline"><label>Centre X / Y sign</label><div class="num"><select id="pCtrX"><option value="1">+</option><option value="-1">−</option></select><select id="pCtrY"><option value="1">+</option><option value="-1">−</option></select></div></div>
         <label class="check"><input type="checkbox" id="pExtCtrl"> Send OBI ExternalCtrl on connect</label>

@@ -15,7 +15,7 @@ let obiState = { bridge: false, obi: false, demo: false };
 
 // ---------------------------------------------------------------- preferences (this browser)
 const PREF_DEFAULTS = { res: "512x512", speed: "500", photo: "2048x1536", photoDwell: "4000", histLo: 0, histHi: 1,
-  dwellUnit: 125, bits: 8, hfw1: 110, focusStep: 2, stigStep: 8, ctrX: 1, ctrY: 1, extCtrl: false, demo: false, scanExt: true, jog: "0.1" };
+  dwellUnit: 125, bits: 8, hfw1: 110, focusStepMm: 0.5, stigStep: 8, ctrX: 1, ctrY: 1, extCtrl: false, demo: false, scanExt: true, jog: "0.1" };
 const prefs = Object.assign({}, PREF_DEFAULTS, (() => { try { return JSON.parse(localStorage.getItem("leo.prefs") || "{}"); } catch { return {}; } })());
 const savePrefs = () => { try { localStorage.setItem("leo.prefs", JSON.stringify(prefs)); } catch {} };
 
@@ -176,12 +176,12 @@ function render() {
   // Image card
   stateClass($("eoState"), eo.link ? "ok" : "warn", eo.link ? `${eo.mode} scan` : "EO link ?");
   setVal($("inMag"), Math.round(eo.mag));
-  setVal($("slFocus"), Math.round(eo.focus)); $("oFocus").textContent = Math.round(eo.focus);
+  setVal($("slFocus"), eo.wd); setVal($("inFocus"), eo.wd, 2);
   setVal($("slStigX"), eo.stigx); $("oStigX").textContent = eo.stigx;
   setVal($("slStigY"), eo.stigy); $("oStigY").textContent = eo.stigy;
   setVal($("slPmt"), eht.pm1); setVal($("inPmt"), eht.pm1);
   $("btnWobble").classList.toggle("on", eo.wob > 0);
-  setVal($("inRot"), eo.rot); setVal($("inWd"), eo.wd); setVal($("inTilt"), eo.tilt);
+  setVal($("inRot"), eo.rot); setVal($("inTilt"), eo.tilt);
 
   // Stage card
   for (let a = 0; a < 5; a++) $("ax" + a).textContent = stg.valid && stg.pos[a] !== null ? stg.pos[a].toFixed(a < 3 ? 3 : 2) : "–";
@@ -282,7 +282,7 @@ $("btnBeam").onclick = () => {
   const b = st.eht.beam;
   sendQ(b === "on" || b === "starting" || b === "eht_off" ? "beam off" : "beam on");
 };
-const numCmd = { inKv: "kv", inEmis: "emis", inFil: "fil", inColl: "coll", inMag: "mag", inRot: "rot", inWd: "wd", inTilt: "tilt" };
+const numCmd = { inKv: "kv", inEmis: "emis", inFil: "fil", inColl: "coll", inMag: "mag", inRot: "rot", inTilt: "tilt" };
 for (const [id, cmd] of Object.entries(numCmd)) $(id).onchange = (e) => { touch(e.target); sendQ(`${cmd} ${e.target.value}`); };
 for (const b of document.querySelectorAll(".num .step")) b.onclick = () => {
   const inp = $(b.dataset.for);
@@ -297,7 +297,15 @@ $("inShX").onchange = shift; $("inShY").onchange = shift;
 function sliderTo(id, out, fn) {
   $(id).oninput = (e) => { touch(e.target); $(out).textContent = e.target.value; fn(e.target.value); };
 }
-sliderTo("slFocus", "oFocus", (v) => sendLatest("focus", `focus ${v}`));
+// Focus: the control is the working distance (the box sets the objective for it, as LEO-32 did).
+function setFocusWd(wd, fromEl) {
+  wd = Math.min(150, Math.max(2, +wd));
+  for (const el of [$("slFocus"), $("inFocus")]) { touch(el); if (el !== fromEl) el.value = el === $("inFocus") ? wd.toFixed(2) : wd; }
+  if (st) { st.eo.wd = +wd.toFixed(3); updateDatabar(); }
+  sendLatest("wd", `wd ${wd.toFixed(3)}`);
+}
+$("slFocus").oninput = (e) => setFocusWd(e.target.value, e.target);
+$("inFocus").onchange = (e) => setFocusWd(e.target.value, e.target);
 sliderTo("slStigX", "oStigX", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
 sliderTo("slStigY", "oStigY", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
 // Collector voltage: slider and number box, like the PMT voltage.
@@ -553,11 +561,9 @@ $("viewport").addEventListener("wheel", (e) => {
     st.eo[k] = Math.max(0, Math.min(4095, st.eo[k] + n * +prefs.stigStep));
     sendLatest("stig", `stig ${st.eo.stigx} ${st.eo.stigy}`);
   } else {
-    // Coarser steps at low magnification, one count at high magnification.
-    const step = Math.max(1, Math.round(+prefs.focusStep * Math.sqrt(100 / Math.max(st.eo.mag, 1))));
-    st.eo.focus = Math.max(0, Math.min(4095, st.eo.focus + n * step));
-    $("oFocus").textContent = Math.round(st.eo.focus);
-    sendLatest("focus", `focus ${Math.round(st.eo.focus)}`);
+    // Focus = WD; the step shrinks with magnification (depth of field). Wheel up = shorter WD.
+    const step = Math.max(0.001, +prefs.focusStepMm * 100 / Math.max(st.eo.mag, 1));
+    setFocusWd(st.eo.wd - n * step);
   }
 }, { passive: false });
 $("viewport").addEventListener("dblclick", (e) => {
@@ -701,7 +707,7 @@ const bindPref = (id, key, num = true, ev = "change") => {
     updateDatabar();
   });
 };
-bindPref("pDwellUnit", "dwellUnit"); bindPref("pBits", "bits"); bindPref("pHfw1", "hfw1"); bindPref("pFocusStep", "focusStep");
+bindPref("pDwellUnit", "dwellUnit"); bindPref("pBits", "bits"); bindPref("pHfw1", "hfw1"); bindPref("pFocusStep", "focusStepMm");
 bindPref("pStigStep", "stigStep"); bindPref("pCtrX", "ctrX"); bindPref("pCtrY", "ctrY"); bindPref("pExtCtrl", "extCtrl");
 bindPref("pScanExt", "scanExt"); bindPref("pDemo", "demo");
 $("pDemo").addEventListener("change", () => worker.postMessage({ type: "demo", on: prefs.demo }));
