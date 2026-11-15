@@ -299,7 +299,7 @@ function sliderTo(id, out, fn) {
 }
 // Focus: the control is the working distance (the box sets the objective for it, as LEO-32 did).
 function setFocusWd(wd, fromEl) {
-  wd = Math.min(150, Math.max(2, +wd));
+  wd = Math.min(100, Math.max(2, +wd));            // 438VP: up to 100 mm (LEO-32 accepted 100 on 2026-11-15)
   for (const el of [$("slFocus"), $("inFocus")]) { touch(el); if (el !== fromEl) el.value = el === $("inFocus") ? wd.toFixed(2) : wd; }
   if (st) { st.eo.wd = +wd.toFixed(3); updateDatabar(); }
   sendLatest("wd", `wd ${wd.toFixed(3)}`);
