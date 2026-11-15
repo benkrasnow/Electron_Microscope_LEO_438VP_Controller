@@ -4,7 +4,7 @@
 |---|---|
 | Subject | How accelerating voltage (kV), working distance (WD), probe current and focus determine the lens currents; the column model LEO-32 uses (Optibeam) |
 | Source | Decompilation of the GSP module `TIGA/g200.440`. Source files `gcondens`, `gfocus`, `geht`, `goptctrl`, `gcolmod`, `gscncoil` and `gscnxfrm`. The machine data file `C:\LEO\Data.vac`, decoded with the field table of LEO's own `view.exe`. The factory calibration `LEO-32\435vpcal\LEO 438V.clb` |
-| Revision | 0.2, 2026-11-15 (0.1 same day) |
+| Revision | 0.3, 2026-11-15 (0.1, 0.2 same day) |
 | Tools | `analysis/fdec.py` (symbolic decompiler for the TI 340x0 C compiler's software floating point); raw outputs in `analysis/optics/` |
 
 Markers: **[D]** decoded from the code with constants; **[C]** cross-checked against scope captures; **[I]** inferred, needs confirmation.
@@ -118,13 +118,15 @@ The objective current then follows from §3.
 - The new k is accepted only if the resulting image distance (the WD) stays within 1–120 mm.
 - Afterwards the WD readout, the scan rotation (`_gsp_set_C3_rotation`) and the Optibeam state are updated.
 
-### 5.5 Aberrations (`gfocus`, near `_gsp_read_C3_current`)
-Two polynomials in k² define the objective's aberration coefficients:
+### 5.5 Aberrations (static function at 0x36ac0, called with the objective record) **[D]**
 ```
-P(k²) = 15.0471/k² + 0.00261369 + 0.000332747·k²
-Q(k²) = 0.628001/k² − 0.000147105 + 5.75723e-6·k²
+P(k²)  = 15.0471/k² + 0.00261369 + 0.000332747·k²
+Q(k²)  = 0.628001/k² − 0.000147105 + 5.75723e-6·k²
+Cs     = P(k²)³ · (1 + m)⁴          (m)     → `_read_C3_aberrations` word 0
+Cc     = Q(k²)  · (1 + m)²          (m)     → word 1
 ```
-The stored values (`_read_C3_aberrations`: two numbers, used by Optibeam as Cs and Cc) are products of P³, Q and the excitation **[D]** for the forms, **[I]** for their exact meaning and units.
+- m is the objective's magnification. The (1+m) powers are the textbook conversion from infinite-conjugate to the actual imaging condition.
+- Examples: k² ≈ 86 (short WD) gives Cs ≈ 8.8 mm, Cc ≈ 7.7 mm. k² ≈ 19 (long WD) gives Cs ≈ 0.5 m. That growth follows the expected ~f³ scaling.
 
 ### 5.6 Lens current → DAC (all three lenses) **[D][C]**
 `_gsp_set_C3_current` and `_gsp_set_condenser_lens_current` use the same 20-bit encoding over a 3 A full scale:
@@ -135,65 +137,81 @@ fine   = (code − 2048) & 0xFF                  condensers: chip 0 DAC1 / DAC3 
 fine   = 2048 + ((code − 2048) & 0xFF)          objective: chip 1 DAC1 (captured 2095 … 2262, all within 2048 … 2303)
 I      = ((coarse << 8) + low byte + 2048) / 1 048 575 × 3 A
 ```
-- Condenser pairs: C1 = chip 0 DAC0 (coarse) / DAC1 (fine); C2 = DAC2 / DAC3.
+- Register map, confirmed in `_gsp_set_condenser_lens_current`: C1 = chip 0 DAC0 (coarse) / DAC1 (fine); C2 = DAC2 / DAC3; objective = chip 1 DAC0 / DAC1.
 - Captured objective coarse 382 / 550 / 790 at 5 / 10 / 20 kV = **0.286 / 0.409 / 0.585 A**. The ratios match √Vr (1.43 vs 1.42), confirming the excitation law.
-- The absolute values correspond to a longer WD than the 10 mm assumed in revision 0.1. The WD of those captures was not recorded (measurement M2 in §12).
-- The revision 0.1 figure of "1.6 mA per coarse count" assumed WD 10 mm and is superseded.
+- The absolute values correspond to a longer WD than the 10 mm assumed in revision 0.1. The WD of those captures was not recorded (measurement M2 in §11).
 
-## 6. Optibeam: probe current and probe size (`goptctrl`) **[D]** structure, **[I]** details
+### 5.7 Image rotation by the objective (tail of `_gsp_calc_focus_lens_current`) **[D][C]**
+```
+θ_C3 = −9° × k        wrapped to 0 … 360°       (−9 = Data.vac "Focus Rotation")
+```
+This is the Larmor rotation, which is proportional to `N·I/√Vr = k`. It feeds `_gsp_set_C3_rotation` → `_calc_E3_dependents` → the scan coil matrix (§8). So every focus or WD change rotates the scan to keep the image still.
+Check: the 10 → 15 mm WD change in the captures rotated the scan by about 8°. A Δk of 0.6–0.9 predicts 5–8°.
+
+## 6. Optibeam: probe current and probe size (`goptctrl`) **[D]**
 
 ### 6.1 Gun model (`_update_electron_source_data`)
-Gun data is a table versus voltage, interpolated linearly in kV. The brightness term is scaled with `log`/`exp` in the code. There are two tables, by filament type and mode, each with 15 voltage rows (500 V … 30 kV).
+There are four tables of 15 rows: (tungsten, LaB6) × (standard anode 0.5–40 kV, low-kV anode 0.1–3 kV). Each row is (V, brightness B, source diameter d₀, energy spread ΔE). Values are interpolated linearly in V; there is `log`/`exp` scaling in one term. The block `[ΔE, d₀, B, V, √Vr, …]` (`_read_electron_source_data`) holds the values at the present kV.
 
-| V (kV) | Brightness β (A/m²/sr) | Source (crossover) diameter d₀ | Energy spread ΔE (eV) |
-|---|---|---|---|
-| 0.5 | 1.62e6 | 129.8 µm | 0.38 |
-| 1 | 6.15e6 | 135.6 µm | 0.53 |
-| 2 | 2.27e7 | 121.8 µm | 0.74 |
-| 5 | 1.22e8 | 83.9 µm | 1.11 |
-| 10 | 4.22e8 | 53.1 µm | 1.44 |
-| … to 30 kV | | | |
+This machine uses table 0 (tungsten, standard anode):
 
-The units shown are the natural ones for a tungsten hairpin. The column meanings come from how the code uses them **[I]**.
+| V (kV) | 0.5 | 1 | 2 | 3 | 5 | 7.5 | 10 | 15 | 20 | 25 | 30 | 40 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| B (A/m²/sr) | 1.62e6 | 6.15e6 | 2.27e7 | 4.81e7 | 1.22e8 | 2.53e8 | 4.22e8 | 8.59e8 | 1.42e9 | 2.08e9 | 2.84e9 | 4.62e9 |
+| d₀ (µm) | 129.8 | 135.6 | 121.8 | 106.7 | 83.9 | 65.4 | 53.1 | 37.9 | 28.9 | 23.0 | 18.9 | 13.5 |
+| ΔE (eV) | 0.38 | 0.53 | 0.74 | 0.89 | 1.11 | 1.30 | 1.44 | 1.64 | 1.77 | 1.87 | 1.94 | 2.04 |
 
-### 6.2 Probe size (`_gsp_optibeam_status`)
-The final probe diameter is a quadrature sum:
-```
-d = sqrt( d_I² + d_d² + d_c² + d_s² )
-d_I = d₀ · M_C1 · M_C2 · M_C3                 (demagnified source)
-d_d = 1.30364e-9 / (√Vr · α)                  (diffraction; 1.0634 · λ·√Vr, with λ = 1.226e-9/√Vr m)
-d_c = 1.181 · Cc · (ΔE / V) · α               (chromatic)
-d_s = Cs-term · α³                            (spherical)
-```
-- α is the convergence semi-angle at the specimen, set by the final aperture (radius / distance to the C2 crossover image, at z = −0.16 m) and the objective magnification.
-- Depth of field is shown as 3.826e-5 / M or 2.292e-4 / M (two display criteria).
+(Rows 1.5, 2.5 and 4 kV are also in the table; all four tables are in `analysis/optics/`.)
 
-### 6.3 Probe current law (probe-range routine at 0x567b0) **[D]**
+### 6.2 Probe size (`_gsp_optibeam_status`, auto-resolution mode)
 ```
-α_ap  = (D_aperture / 2) / | z_aperture − z_C2 crossover |     (z_aperture = −0.16 m)
-I_p   = B · ( α_ap · d₀ · M_C1 · M_C2 / 0.53 )²                (B, d₀ from the gun data at the present kV)
-I_max = B · ( α_g · d₀ / 0.53 )²,  α_g = 1.6779 mrad          (gun acceptance half-angle)
-I_min = 1e-12 A
+K_I = 0.53 · sqrt(I_p / B)                       ("current" term = α·d product)
+K_λ = 1.30364e-9 / √Vr                           (diffraction; 1.063·λ)
+d   = sqrt( d_I² + d_λ² + d_c² + d_s² ),   d_I = K_I/α,  d_λ = K_λ/α,
+      d_c = 1.181·Cc·(ΔE/V)·α,  d_s = 0.278·Cs·α³ (the 0.278·Cs term appears in the resolution optimiser)
 ```
-- The extreme lens settings use the minimum focal lengths **C1 4.9707 mm** and **C2 3.6796 mm**.
-- `_gsp_set_probe_current` clamps the request between I_min and the achievable maximum. These limits are recomputed for every kV / aperture change (`_update_optibeam_for_EHT_change`, `_gsp_set_current_aperture`).
-- It then picks C1/C2 (the crossover position) to deliver the current. Correction tables ("condition layers", `_interpolate_condition_layer`, import/export via `_gsp_import_condition_table` / `_gsp_import_probe_table`) refine the analytic result **[I]**.
-- Modes: auto-resolution, depth, HPSEM (VP: `_set_lenses_for_HPSEM`), conjugate focus (conjugate plane z = −0.164 m, from `Data.vac`).
+Depth of field is shown as 3.826e-5 / M or 2.292e-4 / M (two display criteria).
+
+### 6.3 Setting a probe current **[D]**
+`_gsp_set_probe_current(I)`:
+1. Clamps I between `I_min = 1e-12 A` and `I_max`.
+2. Stores I.
+3. Calls the routine for the active mode through `_gsp_notify_optibeam`.
+
+Each mode computes the convergence angle α and the required source-image size d at the specimen, then solves the condensers:
+
+| Mode (routine) | α | d |
+|---|---|---|
+| **Auto-resolution** (0x5e000) | `α_opt = ((K_I² + K_λ²) / (3·(0.278·Cs)²))^(1/8)`: minimises the probe size (∂d/∂α = 0 with the spherical term) | `K_I / α_opt` |
+| **Conjugate / fixed aperture angle** (0x5fd40) | the final aperture seen from the C2 crossover, which is held at the **conjugate plane z = −0.164 m** (`Data.vac`, `_gsp_set_conjugate_focus`): `α = D/(2·|−0.16 − (−0.164)|) / M_C3`. Also tries the other apertures (loops over the aperture table, thresholds 0.667 / 1.2) | `0.53·sqrt(I/B) / α` |
+| Depth / other (0x5ef50, 0x5df00) | variants (larger WD, depth of field) | |
+| VP (HPSEM, `_set_lenses_for_HPSEM`) | own settings | |
+
+**Condenser solver** (static 0x4afb0, also 0x4bb40). Given the required total demagnification `M = d / d₀` and a target plane `z_t` for the C2 crossover:
+```
+u1 = zH1 + 0.534,   v2 = z_t − zH2'
+z1 = (M·u1·zH2 + zH1'·v2) / (M·u1 + v2)          (C1 crossover position giving M1·M2 = M)
+v1 = z1 − zH1',  u2 = zH2 − z1
+f1 = u1·v1/(u1 + v1),   f2 = u2·v2/(u2 + v2)     → _gsp_set_condenser_focal_length(f1, f2)
+```
+`_set_focal_length_on_lens` turns f into k (§3 inverse), and `_calc_condenser_lens_current` into currents with the crosstalk matrix (§4). The objective is then re-solved for the WD (`_gsp_set_working_dist`), because its object (the C2 crossover) may have moved.
+
+Probe-current range (0x567b0): `I_max = B·(α_g·d₀/0.53)²` with the gun acceptance α_g = 1.6779 mrad. The extreme condenser settings are the minimum focal lengths C1 4.9707 mm and C2 3.6796 mm. Lens record layout: `[zH, zH', f, k, I, z_crossover, M, N, –]` (`_update_C1/C2_crossover_and_mag`).
 
 ### 6.4 Cross-check against the probe-current captures (5 kV) **[C]** partly
-`analysis/optics/column_model.py` runs the decoded chain: DAC → current → excitation (with crosstalk) → focal length → crossover positions → I_p.
+`analysis/optics/column_model.py` runs the decoded chain from the captured DACs: DAC → current → excitation (with crosstalk) → focal length → crossover positions.
 
-| Requested | C1 / C2 current | f1 / f2 (mm) | C2 crossover z (mm) | Model I_p |
+| Requested | C1 / C2 current | f1 / f2 (mm) | C2 crossover z (mm) | M1·M2 |
 |---|---|---|---|---|
-| 50 pA | 0.820 / 0.238 A | 5.67 / 23.6 | −180.1 | **68 pA** |
-| 300 pA | 0.764 / 0.193 A | 6.14 / 33.7 | −164.8 | 3.3 nA |
-| 500 pA | 0.693 / 0.191 A | 6.91 / 35.1 | −162.5 | 18 nA |
-| 1000 pA | 0.612 / 0.189 A | 8.18 / 36.7 | −159.5 | (crossover at the aperture) |
+| 50 pA | 0.820 / 0.238 A | 5.67 / 23.6 | −180.1 | 6.30e-3 |
+| 300 pA | 0.764 / 0.193 A | 6.14 / 33.7 | −164.8 | 1.06e-2 |
+| 500 pA | 0.693 / 0.191 A | 6.91 / 35.1 | −162.5 | 1.27e-2 |
+| 1000 pA | 0.612 / 0.189 A | 8.18 / 36.7 | −159.5 | 1.63e-2 |
 
-- The 50 pA setting is reproduced to within a factor 1.4 with no fitting. This confirms the DAC encoding, lens laws, `Data.vac` calibrations and gun brightness together.
-- For higher currents LEO-32 moves the C2 crossover to the aperture plane. There the result depends on the crossover position to fractions of a millimetre, and the model as decoded does not yet track it.
-- Fitting the aperture plane alone gives −0.148 m and 26 / 267 / 516 / 1332 pA, which is the right shape. Neither crosstalk convention fits at the coded −0.16 m.
-- So one geometric detail is still wrong: probably the layout of the condenser data record (which fields are the principal planes and crossover), or how the crosstalk enters. Resolve it by decoding `_read_condenser_data` / `_update_C2_crossover_and_mag` further, or by measurement M3 (§12).
+- The C2 crossover is **not** held at the conjugate plane, so these captures were taken in **auto-resolution** mode. In that mode α grows with current, and the crossover moves towards the aperture.
+- In that mode, with Cs ≈ 0.52 m (the objective state of the 5 kV capture, coarse 382 → 0.286 A, k² ≈ 19), the required demagnification grows by **2.73×** from 50 to 1000 pA. The decoded DAC chain gives **2.59×**. That's consistent within the unknown WD and objective magnification.
+- An exact absolute check needs the WD of those captures (M2) or a measured probe current (M3).
+- Rev 0.2's single-law check (68 pA at the 50 pA setting) assumed the conjugate-mode angle and is superseded by this mode identification.
 
 ## 7. `Data.vac`: LEO-32 non-volatile machine data **[D]**
 
@@ -253,17 +271,18 @@ EO fields for this machine (file offset):
 The firmware currently uses a 4-point probe-current table at 5 kV (`eo.pc*`). With this model it can do what LEO-32 did:
 1. **kV:** compute `√Vr`, interpolate the gun table, and scale all lens excitations to keep focal lengths (I + rem ∝ √Vr). The scan deflection also scales with √Vr.
 2. **WD / focus:** hold the objective as excitation `k`, step it like `_gsp_step_focus`, and compute WD from the thin-lens image of the C2 crossover. Drive the DACs with the §5.6 encoding. Update the scan rotation (Focus Rotation) and the scan size (distance term) with WD.
-3. **Probe current:** choose C1/C2 by the §6.3 law, solve the currents with the crosstalk matrix, and use the §5.6 encoding. This needs §6.4 resolved first.
-4. **Scan:** replace the curve-fitted per-range calibration with §8: the range steps, Mag Cal, centring from Mag Range Cal, orthogonality, and the rotation chain.
-5. **Calibration** values can be imported from `Data.vac` (`analysis/datavac.py`).
+3. **Probe current:** implement §6.3. Compute α (auto-resolution: α_opt from Cs; or conjugate mode) and d = K_I/α, solve f1/f2 with the condenser solver, convert to currents with the crosstalk matrix, then to DACs with §5.6. Re-solve the objective for the WD afterwards.
+4. **Rotation:** θ_C3 = −9°·k on every objective change (§5.7).
+5. **Scan:** replace the curve-fitted per-range calibration with §8: the range steps, Mag Cal, centring from Mag Range Cal, orthogonality, and the rotation chain.
+6. **Calibration** values can be imported from `Data.vac` (`analysis/datavac.py`).
 
 ## 10. Open items (decoding)
 
-- §6.4: the condenser data record layout and the crosstalk convention, so that the 300–1000 pA settings reproduce.
-- The objective rotation law: how `Focus Rotation` (−9) and the excitation give E (`_gsp_calc_focus_lens_current` tail and `_calc_E3_dependents`). The exact L in the deflection formula.
-- The meaning and units of the aberration polynomials P and Q (Cs, Cc) and the probe-size display constants.
-- The condition-layer tables (`_interpolate_condition_layer`) and where the probe / condition tables are stored on the PC (probably the user state files: `*.MLC`, `current.mll` contain Optibeam data).
-- The remaining gun table rows (15 to 30 kV) and the second table set.
+- Optibeam modes other than auto-resolution and conjugate (0x5ef50, 0x5df00, HPSEM). Which mode the operator's "Optibeam on" uses by default (`_gsp_set_optibeam_mode` values).
+- The condition-layer correction tables (`_interpolate_condition_layer`, imported from the PC with `_gsp_import_condition_table` / `_gsp_import_probe_table`) and where the PC keeps them (user state files `*.MLC`, `current.mll` contain Optibeam data).
+- The exact length L in the scan deflection formula, and the reference angle subtracted from θ_C3 (`_calc_E3_dependents`).
+- The constants for the probe-size display terms beyond §6.2.
+- An exact replica of LEO-32's numbers for any input is best obtained by **emulating** the decoded GSP functions (a small TMS34020 interpreter around `g200.440` with the FS$/FD$ library implemented in Python). The control box could then be checked against LEO-32 setting by setting.
 
 ## 11. Measurements that would settle the model
 
