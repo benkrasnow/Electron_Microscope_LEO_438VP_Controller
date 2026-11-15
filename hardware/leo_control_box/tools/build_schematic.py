@@ -128,8 +128,7 @@ PARTS = {
     "FUSE":   ("Littelfuse", "1812L110/16DR", "F3485CT-ND", 0.74, "replaces obsolete Bourns MF-MSMF110-2"),
     "HDR":    ("Sullins", "PRPC040SAAN-RC", "S1011EC-40-ND", 1.23, "1x40 breakaway strip, cut for J6 and J11"),
     "QWIIC":  ("JST", "SM04B-SRSS-TB(LF)(SN)", "455-SM04B-SRSS-TBCT-ND", 0.51, ""),
-    "AHCT125": ("Texas Instruments", "SN74AHCT125DR", "296-4652-1-ND", 0.52, ""),
-    "2N7002": ("onsemi", "2N7002LT1G", "2N7002LT1GOSCT-ND", 0.26, ""),
+    "NX3008": ("Nexperia", "NX3008NBKVL", "1727-NX3008NBKVLCT-ND", 0.21, "logic-level N-MOSFET, Vgs(th) <= 1.1 V, Ciss <= 50 pF; gate driven straight from the Teensy"),
     "TEENSY":  ("PJRC / SparkFun", "15583 (Teensy 4.0)", "1568-15583-ND", 25.66, "owner has stock; Digi-Key stock 0 on 2026-11-13"),
     "HFBR_TX": ("Broadcom", "HFBR-1521Z", "516-2043-ND", 19.14, "owner has stock; Digi-Key backordered (alt AFBR-1521CZ 516-3584-ND)"),
     "HFBR_RX": ("Broadcom", "HFBR-2521Z", "516-2062-ND", 20.46, "owner has stock"),
@@ -149,7 +148,7 @@ def part_key(lib_id, value, dnp):
     if dnp:
         return None
     name = lib_id.split(":")[1]
-    by_name = {"74AHCT125": "AHCT125", "2N7002": "2N7002",
+    by_name = {"NX3008NBK": "NX3008",
                "Teensy_4.0": "TEENSY", "HFBR-1521Z": "HFBR_TX", "HFBR-2521Z": "HFBR_RX",
                "LED": "LED", "Polyfuse": "FUSE",
                "Conn_01x04": "HDR", "ISO6720FBD": "ISO", "Battery_Cell": "BAT", "Conn_01x04_MountingPin": "QWIIC", "Conn_02x10_Odd_Even": "IDC20",
@@ -275,33 +274,21 @@ def build():
 
     # --- fiber transmitters ----------------------------------------------------------------------
     text("Fiber transmitters (HFBR-1521Z)", 170, 32)
-    text("Idle = high = LED on. 10k pull-ups hold the lines idle while the Teensy is in reset. Peaking caps DNP.", 170, 37, 1.8)
+    text("Teensy pin drives the MOSFET gate directly. Idle = high = LED on; the 10k pull-up holds the gate high", 170, 37, 1.8)
+    text("(LED on, line idle) while the Teensy is in reset. Peaking caps DNP.", 170, 41, 1.8)
     tx = [("EHT_TX", "EHT"), ("STG_TX", "STG/VAC"), ("EO_F1", "EO F1 frame gate"), ("EO_F2", "EO F2 line gate"), ("EO_F3", "EO F3 registers"),
           ("VP_TX", "VP controller (its RX1 is an HFBR-2524)")]
-    gates = [("U2", 1), ("U2", 2), ("U2", 4), ("U3", 1), ("U3", 2), ("U2", 3)]   # grouped by board position: U2 = EHT, STG, VP, F1; U3 = F2, F3
     tx_ref = ["U4", "U5", "U6", "U7", "U8", "U12"]
     tx_r = [10, 11, 12, 13, 14, 15]
-    gate_pins = {1: ("1", "2", "3"), 2: ("4", "5", "6"), 3: ("10", "9", "8"), 4: ("13", "12", "11")}
-    for i, ((net, title), (gref, gu)) in enumerate(zip(tx, gates)):
+    for i, (net, title) in enumerate(tx):
         y = 55 + 26 * i
         text(title, 172, y - 10, 1.8)
         two(R_, "R%d" % tx_r[i], "10k", 180, y, "+3V3", net)
-        oe, a, yo = gate_pins[gu]
-        gx = 200.66
-        place(T + "74AHCT125", gref, "74AHCT125", FP + "SOIC-14_3.9x8.7mm_P1.27mm", gx, y, {oe: "GND", a: net, yo: ""}, unit=gu)
-        # MOSFET gate pin sits exactly on the buffer output pin (gx + 7.62 = qx - 5.08)
-        place(T + "2N7002", "Q%d" % (1 + i), "2N7002", FP + "SOT-23", gx + 12.7, y, {"1": "", "2": "GND", "3": net + "_K"})
+        place(T + "NX3008NBK", "Q%d" % (1 + i), "NX3008NBK", FP + "SOT-23", 213.36, y, {"1": net, "2": "GND", "3": net + "_K"})
         place(T + "HFBR-1521Z", tx_ref[i], "HFBR-1521Z", FP + "AGILENT_HFBR-152x", 255, y,
               {"1": net + "_A", "2": net + "_K", "5": "GND", "6": "GND"})
         two(R_, "R%d" % (20 + i), "56", 280, y, "+5V", net + "_A")
         two(C_, "C%d" % (20 + i), "peaking", 292, y, "+5V", net + "_A", dnp=True)
-    # unused gates of U3: input low, output disabled
-    for j, gu in enumerate((3, 4)):
-        oe, a, yo = gate_pins[gu]
-        place(T + "74AHCT125", "U3", "74AHCT125", FP + "SOIC-14_3.9x8.7mm_P1.27mm", 200 + 25 * j, 214, {oe: "+5V", a: "GND", yo: None}, unit=gu)
-    for k, ref in enumerate(("U2", "U3")):
-        place(T + "74AHCT125", ref, "74AHCT125", FP + "SOIC-14_3.9x8.7mm_P1.27mm", 260 + 25 * k, 214, {"14": "+5V", "7": "GND"}, unit=5)
-        two(C_, "C%d" % (30 + k), "100n", 270 + 25 * k, 214, "+5V", "GND")
 
     # --- fiber receivers -------------------------------------------------------------------------
     text("Fiber receivers (HFBR-2521Z)", 170, 241)

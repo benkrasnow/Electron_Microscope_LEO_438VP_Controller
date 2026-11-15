@@ -59,9 +59,15 @@ def flat_symbol(lib, name):
     return head + "\n\t\t" + "\n\t\t".join(PROP.findall(blk)) + body
 
 
-def stock_symbol(lib, name, footprint):
+def stock_symbol(lib, name, footprint, rename=None):
     blk = flat_symbol(lib, name)
-    return re.sub(r'\(property "Footprint" "[^"]*"', '(property "Footprint" "%s:%s"' % (LIB, footprint), blk, count=1)
+    blk = re.sub(r'\(property "Footprint" "[^"]*"', '(property "Footprint" "%s:%s"' % (LIB, footprint), blk, count=1)
+    if rename:                                          # same graphics and pinout under another part's name
+        blk = blk.replace('(symbol "%s"' % name, '(symbol "%s"' % rename, 1).replace('(symbol "%s_' % name, '(symbol "%s_' % rename)
+        blk = re.sub(r'\(property "Value" "[^"]*"', '(property "Value" "%s"' % rename, blk, count=1)
+        blk = re.sub(r'\(property "Datasheet" "[^"]*"', '(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/NX3008NBK.pdf"', blk, count=1)
+        blk = re.sub(r'\(property "Description" "[^"]*"', '(property "Description" "N-MOSFET 30 V 0.4 A, Vgs(th) <= 1.1 V, SOT-23 (G=1, S=2, D=3)"', blk, count=1)
+    return blk
 
 
 # ---------------------------------------------------------------- custom symbols
@@ -190,7 +196,7 @@ def teensy_footprint():
 # ---------------------------------------------------------------- stock footprints to copy
 STOCK_FP = {
     "OptoDevice": ["AGILENT_HFBR-152x", "AGILENT_HFBR-252x"],
-    "Package_SO": ["SOIC-14_3.9x8.7mm_P1.27mm", "SOIC-8_3.9x4.9mm_P1.27mm"],
+    "Package_SO": ["SOIC-8_3.9x4.9mm_P1.27mm"],
     "Package_TO_SOT_SMD": ["SOT-23"],
     "Connector_JST": ["JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"],
     "Connector_IDC": ["IDC-Header_2x10_P2.54mm_Vertical"],
@@ -204,10 +210,9 @@ STOCK_FP = {
     "Fuse": ["Fuse_1812_4532Metric"],
 }
 
-# stock symbols copied into the project library: (library, name, project footprint)
+# stock symbols copied into the project library: (library, name, project footprint[, new name])
 STOCK_SYM = [
-    ("74xx", "74AHCT125", "SOIC-14_3.9x8.7mm_P1.27mm"),
-    ("Transistor_FET", "2N7002", "SOT-23"),
+    ("Transistor_FET", "2N7002", "SOT-23", "NX3008NBK"),        # 2N7002 drawing, NX3008NBK part (same SOT-23 pinout)
     ("Connector", "USB_C_Receptacle_PowerOnly_6P", "USB_C_Receptacle_GCT_USB4125-xx-x_6P_TopMnt_Horizontal"),
     ("Isolator", "ISO6720FBD", "SOIC-8_3.9x4.9mm_P1.27mm"),
 ]
@@ -223,8 +228,8 @@ def main():
 
     out = '(kicad_symbol_lib\n\t(version 20251024)\n\t(generator "build_libs.py")\n\t(generator_version "10.0")\n'
     out += teensy_symbol() + hfbr_tx_symbol() + hfbr_rx_symbol()
-    for lib, name, fp in STOCK_SYM:
-        out += "\t" + stock_symbol(lib, name, fp) + "\n"
+    for lib, name, fp, *rename in STOCK_SYM:
+        out += "\t" + stock_symbol(lib, name, fp, *rename) + "\n"
     out += ")\n"
     open(SYM_OUT, "w", encoding="utf-8").write(out)
     # let KiCad itself rewrite the library in its native format (KiCad 10)
