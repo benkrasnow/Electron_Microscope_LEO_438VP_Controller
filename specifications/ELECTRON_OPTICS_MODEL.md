@@ -4,8 +4,8 @@
 |---|---|
 | Subject | How accelerating voltage (kV), working distance (WD), probe current and focus determine the lens currents; the column model LEO-32 uses (Optibeam) |
 | Source | Decompilation of the GSP module `TIGA/g200.440`. Source files `gcondens`, `gfocus`, `geht`, `goptctrl`, `gcolmod`, `gscncoil` and `gscnxfrm`. The machine data file `C:\LEO\Data.vac`, decoded with the field table of LEO's own `view.exe`. The factory calibration `LEO-32\435vpcal\LEO 438V.clb` |
-| Revision | 0.3, 2026-11-15 (0.1, 0.2 same day) |
-| Tools | `analysis/fdec.py` (symbolic decompiler for the TI 340x0 C compiler's software floating point); raw outputs in `analysis/optics/` |
+| Revision | 0.4, 2026-11-15 (0.1–0.3 same day): adds the GSP emulator (§6.5) |
+| Tools | `analysis/fdec.py` (symbolic decompiler for the TI 340x0 C compiler's software floating point); `analysis/gspemu.py` + `analysis/optics/emu_driver.py` (TMS34020 emulator that runs LEO-32's own column code); raw outputs in `analysis/optics/` |
 
 Markers: **[D]** decoded from the code with constants; **[C]** cross-checked against scope captures; **[I]** inferred, needs confirmation.
 
@@ -213,6 +213,48 @@ Probe-current range (0x567b0): `I_max = B·(α_g·d₀/0.53)²` with the gun acc
 - An exact absolute check needs the WD of those captures (M2) or a measured probe current (M3).
 - Rev 0.2's single-law check (68 pA at the 50 pA setting) assumed the conjugate-mode angle and is superseded by this mode identification.
 
+### 6.5 Running LEO-32's own code: the GSP emulator **[D][C]**
+`analysis/gspemu.py` is a TMS34020 interpreter for `g200.440`:
+- bit-addressed memory with `.text`, `.data` and `.cinit` loaded;
+- the FS$/FD$ software-float library and the C maths calls (`sqrt`, `sin`, `cos`, `log`, `exp`, `pow`) done in Python;
+- the PC/DSP hooks stubbed. Every EO register write (`_DSP_set_EO_register`) is recorded.
+
+`analysis/optics/emu_driver.py` initialises it the way LEO-32 does:
+1. Fills the EO register ID tables.
+2. Runs `_gsp_init_EO_board`, `_initialise_lens_data` and `_initialise_focus_lens_data`.
+3. Applies this machine's `Data.vac` values: C1–C3 cal/rem, crosstalk, conjugate focus −0.164 m.
+
+It then drives the user controls through the same entry points the PC calls (`_update_EHT`, `_gsp_set_working_dist`, `_gsp_set_optibeam_mode`, `_gsp_set_conjugate_mode`, `_gsp_set_probe_current`). The result is the DAC words LEO-32 would send.
+
+Comparison with the 5 kV probe-current captures (`python optics/emu_driver.py`; coarse DACs C1 / C2 / objective):
+
+| Requested | Captured | Mode 0, 30 µm (Data.vac) | Mode 0, 70 µm | Conjugate, 30 µm |
+|---|---|---|---|---|
+| 50 pA | 1111 / 317 / 380 | 1305 / 317 / 382 | 1301 / 407 / 379 | 1308 / 248 / 386 |
+| 300 pA | 1035 / 254 / 382 | 1307 / 271 / 384 | 1010 / 348 / 381 | 1308 / 248 / 386 |
+| 500 pA | 938 / 252 / 382 | 1307 / 264 / 385 | 921 / 341 / 381 | 1308 / 248 / 386 |
+| 1000 pA | 827 / 250 / 383 | 1101 / 269 / 385 | 819 / 333 / 382 | 1308 / 248 / 386 |
+
+What this establishes:
+- **Objective:** reproduced to 1–3 counts at every current, with WD = 36.55 mm (the WD that reproduces the captured code). The C3 chain (§5) is therefore exact, including the dependence on the C2 crossover.
+- **Gun data at 5 kV** (`GUN_NOW` 0x172b20): ΔE 1.11 eV, d₀ 83.9 µm, B 1.22e8, √Vr 70.88, so the tungsten / standard-anode table is selected and interpolated as in §6.1. The `log`/`exp` brightness term in `_update_electron_source_data` applies only above or below the table's kV range, not at 5 kV.
+- **C2:** close in mode 0 with the 30 µm aperture (exact at 50 pA, +10…19 counts elsewhere).
+- **C1 does not reproduce in any single state tried.**
+  - With the 30 µm aperture from `Data.vac`, the solver asks for more demagnification than C1 can give and clamps at its minimum focal length (code ≈ 1307).
+  - A 70 µm aperture fits C1 within 1–3 % at 300–1000 pA, but moves C2 by ~90 counts.
+  - Brightness scaling (B × 0.05 … 0.5), aperture (10–200 µm), WD (5–45 mm), the conjugate flag and auto-resolution sub-modes 0–2 were all swept; none fits C1 and C2 together. Optibeam modes 1–3 are far off.
+  - Since d = 0.53·√(I/B)/α, B and the aperture-defined α trade against each other, so the captured C1 slope (−208 counts from 300 to 1000 pA) points at a different α law rather than a different brightness.
+- **Probe table** (`_gsp_import_probe_table`): it copies 25 floats into 0x174fa0. The defaults are five rows of increasing values (50…200, 5…160, 1…50, 1…20, 1…5). Mode 0 never reads them while setting a probe current.
+
+The likeliest explanation is PC-side state the emulator does not set yet. Candidates:
+- the aperture actually in the beam (M7);
+- the PC's Optibeam start-up sequence (`_cp_set_aperture_data`, `_cp_set_current_aperture`, `_cp_FE_optibeam_update`, condition tables);
+- a manual condenser adjustment during the captures.
+
+M3/M4 captures with the LEO-32 Optibeam screen recorded (M8) would settle it. Until then:
+- The control box uses the captured table for C1/C2 (`eo.pc*`).
+- The emulator is the reference for the objective and for kV/WD scaling.
+
 ## 7. `Data.vac`: LEO-32 non-volatile machine data **[D]**
 
 The field layout comes from LEO's own viewer, **`view.exe` ("LEO DATA.VAC File Viewer", 1997)**. Each label in it is preceded by the load of its field. `analysis/datavac.py` extracts the table and decodes any `Data.vac`; the full listing for this machine is `analysis/optics/datavac_decoded.txt`. It's a 1567-byte packed file:
@@ -282,7 +324,7 @@ The firmware currently uses a 4-point probe-current table at 5 kV (`eo.pc*`). Wi
 - The condition-layer correction tables (`_interpolate_condition_layer`, imported from the PC with `_gsp_import_condition_table` / `_gsp_import_probe_table`) and where the PC keeps them (user state files `*.MLC`, `current.mll` contain Optibeam data).
 - The exact length L in the scan deflection formula, and the reference angle subtracted from θ_C3 (`_calc_E3_dependents`).
 - The constants for the probe-size display terms beyond §6.2.
-- An exact replica of LEO-32's numbers for any input is best obtained by **emulating** the decoded GSP functions (a small TMS34020 interpreter around `g200.440` with the FS$/FD$ library implemented in Python). The control box could then be checked against LEO-32 setting by setting.
+- The emulator (§6.5) reproduces the objective and C2 but not C1 at 5 kV. Find the PC-side Optibeam state (aperture, start-up calls) that makes C1 match, then use the emulator to check the control box setting by setting.
 
 ## 11. Measurements that would settle the model
 
@@ -308,5 +350,6 @@ cd analysis
 python fdec.py "<drive>/TIGA/g200.440" _calc_excitation_for_WD _gsp_optibeam_status 0x567b0
 python datavac.py "<drive>/Program Files/LEO Electron Microscopy Ltd/LEO-32/view.exe" "<drive>/LEO/Data.vac"
 python optics/column_model.py
+python optics/emu_driver.py          # runs LEO-32's GSP code, compares with the 5 kV captures
 ```
 GSP doubles are stored with their two 32-bit words swapped. `.cinit` holds the compiled lens records, calibration defaults, gun table and aperture table.
