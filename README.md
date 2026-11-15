@@ -9,6 +9,7 @@ Everything generated while reverse-engineering the LEO 438VP SEM's control syste
 | **`specifications/`** | **Start here: `LEO438VP_SYSTEM_DATASHEET.md` (summary of every subsystem and its architecture).** Detailed interface specs: `STAGE_VACUUM_INTERFACE_SPEC.md`, `VP_CONTROLLER_INTERFACE_SPEC.md`, `EHT_INTERFACE_SPEC.md`, `SCAN_GENERATOR_INTERFACE_SPEC.md` |
 | `hardware/leo_control_box/` | KiCad 10 project for the Teensy 4.0 control box (schematic rev 0.1, PCB rev 0.1). See its README |
 | **`firmware/`** | **Teensy 4.0 control-box firmware (`leo_control/`), the USB protocol for the PC page (`PROTOCOL.md`) and every runtime setting (`SETTINGS.md`). See `firmware/README.md`** |
+| **`webui/`** | **Operator web page (Chrome / Edge): control box over Web Serial, OBI imaging through `bridge.py`, developer tools. See `webui/README.md`** |
 | `design/` | Design notes, e.g. the Glasgow pin plan |
 | `scope_tools/` | Tektronix MSO24 control and scan-fiber decoding scripts (`arm_burst.py`, `wait_grab_decode.sh`, `decode_scan_fiber.py`, …) and `SCAN_FIBER_NOTES.md` (working notes and test log) |
 | `scope_captures/` | Scope captures (`.npz` waveforms, `.png` screens, `_ch3.txt` decodes) and the annotated `scan_fiber_timing.png` |

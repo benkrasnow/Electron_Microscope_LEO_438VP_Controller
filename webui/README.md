@@ -1,0 +1,86 @@
+# LEO 438VP web control page
+
+This is the operator interface for the microscope. It runs in **Chrome or Edge** and uses three connections:
+
+| Connection | Path | API |
+|---|---|---|
+| Control box (Teensy) | USB serial, protocol in `../firmware/PROTOCOL.md` | Web Serial |
+| Imaging (OBI / Glasgow) | WebSocket `/obi` → `bridge.py` → OBI applet TCP socket (default `localhost:2224`) | WebSocket + Web Worker |
+| Display | 8- or 16-bit frames drawn as WebGL2 textures | WebGL2 |
+
+## Running it
+
+1. Start the OBI applet (Glasgow) with its TCP endpoint enabled, as usual for OBI. Only the headless applet is needed, not the OBI GUI.
+2. Run:
+   ```
+   python webui/bridge.py
+   ```
+   It needs only the Python standard library. Options: `--port 8438`, `--obi-host`, `--obi-port 2224`.
+3. Open **http://localhost:8438** in Chrome or Edge. Always use this address rather than opening `index.html` as a file: the browser only remembers the serial-port permission for a stable origin.
+4. Click **Control box** in the top bar and pick the Teensy. After the first time, the page reconnects to it automatically, including after an unplug and replug.
+
+The bridge relays bytes and does nothing else. It does not have to be running for the control-box functions, but the page must be served from it (or from any `http://localhost` server) for Web Serial permissions to persist.
+
+## Operator page
+
+- **Top bar:** vacuum, beam and chamber-mode status chips, the running sequence, link indicators, clock, and a link to the Developer tools.
+- **Image area:**
+  - Live / Freeze, scan speed (dwell time), live resolution.
+  - Photo capture: resolution and dwell; saves a 16-bit TIFF with all parameters in the TIFF description, readable by ImageJ / Fiji.
+  - Display contrast / brightness and auto contrast (key **A**).
+  - Data bar: HFW, magnification, kV, WD, dwell, pixels, vacuum, frame rate.
+- **Mouse on the image:**
+  - wheel: focus;
+  - **Ctrl**+wheel: magnification;
+  - **Alt** / **Shift**+wheel: stigmator X / Y;
+  - double-click: move the stage to centre that point.
+- **Side panels:**
+  - Vacuum: pump, vent, HV / VP with target pressure.
+  - Beam: beam on/off, EHT with presets; emission, filament and collector under "Gun".
+  - Image: magnification, focus, stigmators, brightness (PM HV), focus wobble; rotation, WD, tilt correction and beam shift under "Scan geometry".
+  - Stage: positions, jog pad with step size, joystick sensitivity, go-to, initialise.
+- **STOP** (or **Esc**): beam off, stage stop, abort sequences.
+
+Every interlock lives on the control box. The page only asks for things, and shows the box's reason when a request is refused. Vent and VP changes ask for confirmation.
+
+## Developer section
+
+Open it with **Developer** in the top bar, or by clicking the event bar at the bottom.
+
+| Tab | Content |
+|---|---|
+| Settings | All runtime settings of the control box. Filter, edit (sent at once, stored in flash a few seconds later), reset to default, save now |
+| Link traffic | Live trace of the EHT / stage-vacuum / VP links, events and USB commands, with filter, pause and save. Raw link commands (need `dbg.raw 1`; they bypass interlocks) |
+| Console | Any control-box protocol command, with history (↑ / ↓) |
+| OBI / imaging | Bridge and applet state, frame rate, data rate, resyncs; per-browser imaging parameters (dwell unit, live bit depth, HFW at 1×, wheel step sizes, centring direction); demo image source; OBI ExternalCtrl |
+| Status JSON | The raw status object from the box |
+
+Page preferences are kept in the browser (`localStorage`). Machine settings live in the control box.
+
+## Files
+
+| File | Content |
+|---|---|
+| `bridge.py` | static file server + WebSocket ↔ TCP relay (standard library only) |
+| `index.html`, `css/app.css` | layout and styling |
+| `js/app.js` | page logic: status rendering, controls, imaging, developer tools |
+| `js/teensy.js` | Web Serial client for the control box (command ids, replies, telemetry, auto-reconnect) |
+| `js/obi-worker.js` | Web Worker: OBI binary protocol (Synchronize / RasterRegion / RasterPixelRun / Flush), frame parsing with sync-cookie checks, demo source |
+| `js/viewer.js` | WebGL2 display (8-bit and 16-bit textures, display window in the shader), auto contrast |
+| `js/tiff.js` | 8/16-bit TIFF writer |
+| `tools/mock_obi.py` | stand-in OBI TCP server for testing without a Glasgow (`--pace 0` = as fast as possible) |
+
+## Tested (2026-11-14, without the microscope)
+
+- Page → worker → bridge → `mock_obi.py` → frames. 512² 8-bit and 1024² 16-bit, zero resyncs.
+- Unpaced throughput: **~75 fps of 1024×1024 16-bit (~150 MB/s)** through the bridge, worker and WebGL display. That is several times what the Glasgow's USB 2.0 link delivers, so neither the browser nor the bridge limits the frame rate.
+- Status rendering, using a status line from the real control box.
+- Not yet tested: Web Serial with the real box in Chrome (the built-in preview browser has no serial chooser), and the real OBI applet.
+
+## Assumptions to check on the real OBI
+
+- **Dwell unit 125 ns per count:** from the OBI source docstring; adjustable in Developer → OBI.
+- **Sync markers in 8-bit mode:** assumed to be 4 bytes (`FF FF` + 16-bit cookie), as in 16-bit mode. If 8-bit live view shows resyncs, switch live to 16-bit in Developer → OBI.
+- **Field mapping:** the frame is centred in the 14-bit DAC field with square pixels.
+- **HFW at 1×:** set to 110 mm (from the original software). Calibrate it against a grid and update "HFW at 1×", because the OBI's external-scan amplitude may differ from the internal one.
+- **Double-click centring direction:** depends on how the stage axes map to the image; flip it with the sign settings.

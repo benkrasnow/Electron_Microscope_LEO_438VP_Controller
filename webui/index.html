@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LEO 438VP Control</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='none' stroke='%2338bdf8' stroke-width='3'/><circle cx='16' cy='16' r='4' fill='%2338bdf8'/></svg>">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ============================================================ app bar -->
+<header class="appbar">
+  <div class="brand"><span class="logo"></span><span>LEO 438VP</span></div>
+  <div class="chips">
+    <div class="chip" id="chipVac"><span class="dot"></span><span class="lbl">Vacuum</span><b id="chipVacTxt">–</b></div>
+    <div class="chip" id="chipBeam"><span class="dot"></span><span class="lbl">Beam</span><b id="chipBeamTxt">–</b></div>
+    <div class="chip" id="chipMode"><span class="lbl">Mode</span><b id="chipModeTxt">–</b></div>
+  </div>
+  <div class="activity" id="activity"></div>
+  <div class="links">
+    <button class="linkbtn" id="btnBox" title="Control box (USB)"><span class="dot"></span>Control box</button>
+    <span class="linkbtn static" id="lnkObi" title="Open Beam Interface via the local bridge"><span class="dot"></span>OBI</span>
+    <span class="clock" id="clock"></span>
+    <button class="ghost" id="btnDevJump" title="Developer tools">Developer</button>
+  </div>
+</header>
+
+<!-- ============================================================ workspace -->
+<main class="workspace">
+  <section class="imagearea">
+    <div class="imgtools">
+      <div class="seg" id="segScan">
+        <button data-scan="live" class="primary" id="btnLive">▶ Live</button>
+        <button data-scan="freeze" id="btnFreeze">❚❚ Freeze</button>
+      </div>
+      <label class="tool">Speed
+        <select id="selSpeed">
+          <option value="125">Fast</option>
+          <option value="500" selected>Normal</option>
+          <option value="2000">Slow</option>
+          <option value="8000">Very slow</option>
+        </select>
+      </label>
+      <label class="tool">Live
+        <select id="selRes">
+          <option value="256x256">256²</option>
+          <option value="512x512" selected>512²</option>
+          <option value="768x768">768²</option>
+          <option value="1024x768">1024×768</option>
+          <option value="1024x1024">1024²</option>
+        </select>
+      </label>
+      <span class="sep"></span>
+      <label class="tool">Photo
+        <select id="selPhoto">
+          <option value="1024x768">1024×768</option>
+          <option value="2048x1536" selected>2048×1536</option>
+          <option value="4096x3072">4096×3072</option>
+        </select>
+      </label>
+      <label class="tool">Dwell
+        <select id="selPhotoDwell">
+          <option value="1000">1 µs</option>
+          <option value="4000" selected>4 µs</option>
+          <option value="16000">16 µs</option>
+        </select>
+      </label>
+      <button id="btnCapture" class="accent">◉ Capture</button>
+      <span class="grow"></span>
+      <button id="btnAuto" class="ghost" title="Auto contrast (A)">Auto C/B</button>
+      <label class="tool slim" title="Display contrast">C <input type="range" id="dispC" min="0" max="100" value="50"></label>
+      <label class="tool slim" title="Display brightness">B <input type="range" id="dispB" min="0" max="100" value="50"></label>
+    </div>
+
+    <div class="viewport" id="viewport">
+      <canvas id="canvas"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="scalebar" id="scalebar"><div class="bar"></div><span></span></div>
+        <div class="crosshair" id="crosshair"></div>
+      </div>
+      <div class="empty" id="empty">
+        <div class="emptybox">
+          <div class="emptyicon"></div>
+          <h2>No image</h2>
+          <p id="emptyMsg">Start the bridge and the OBI applet, then press <b>Live</b>.</p>
+        </div>
+      </div>
+      <div class="hint" id="hint">Wheel: focus · Ctrl+wheel: magnification · Alt / Shift+wheel: stigmator X / Y · Double-click: centre</div>
+    </div>
+
+    <div class="databar" id="databar">
+      <div><span>HFW</span><b id="dbHfw">–</b></div>
+      <div><span>Mag</span><b id="dbMag">–</b></div>
+      <div><span>EHT</span><b id="dbKv">–</b></div>
+      <div><span>WD</span><b id="dbWd">–</b></div>
+      <div><span>Dwell</span><b id="dbDwell">–</b></div>
+      <div><span>Pixels</span><b id="dbPix">–</b></div>
+      <div><span>Vacuum</span><b id="dbVac">–</b></div>
+      <div><span>Frame</span><b id="dbFps">–</b></div>
+      <div class="grow"></div>
+      <div><span></span><b id="dbDate"></b></div>
+    </div>
+  </section>
+
+  <aside class="sidebar">
+    <!-- Vacuum -->
+    <section class="card">
+      <header><h3>Vacuum</h3><span class="state" id="vacState">–</span></header>
+      <div class="big"><span id="vacPress">–</span><small id="vacPressLbl">column</small></div>
+      <div class="row2">
+        <button id="btnPump" class="action">Pump</button>
+        <button id="btnVent" class="action warn">Vent</button>
+      </div>
+      <div class="field">
+        <label>Chamber mode</label>
+        <div class="seg full" id="segVp">
+          <button data-vp="hv">High vacuum</button>
+          <button data-vp="vp">Variable pressure</button>
+        </div>
+      </div>
+      <div class="field inline">
+        <label for="inVpPa">VP target</label>
+        <div class="num"><input id="inVpPa" type="number" min="1" max="400" step="1"><span class="unit">Pa</span></div>
+        <span class="muted" id="vpChamber"></span>
+      </div>
+    </section>
+
+    <!-- Beam -->
+    <section class="card">
+      <header><h3>Beam</h3><span class="state" id="beamState">–</span></header>
+      <button id="btnBeam" class="beam">Beam on</button>
+      <div class="progress" id="beamProg"><div></div></div>
+      <div class="field inline">
+        <label for="inKv">EHT</label>
+        <div class="num"><button class="step" data-step="-1" data-for="inKv">−</button><input id="inKv" type="number" min="0.5" max="30" step="0.1"><button class="step" data-step="1" data-for="inKv">+</button><span class="unit">kV</span></div>
+      </div>
+      <div class="chips-row" id="kvPresets">
+        <button data-kv="1">1</button><button data-kv="3">3</button><button data-kv="5">5</button><button data-kv="10">10</button><button data-kv="15">15</button><button data-kv="20">20</button><button data-kv="30">30</button>
+      </div>
+      <details class="more">
+        <summary>Gun</summary>
+        <div class="field inline"><label for="inEmis">Emission</label><div class="num"><input id="inEmis" type="number" min="0" max="400" step="5"><span class="unit">µA</span></div></div>
+        <div class="field inline"><label for="inFil">Filament</label><div class="num"><input id="inFil" type="number" min="1000" max="2800" step="1"><span class="unit">mA</span></div><span class="muted" id="filNow"></span></div>
+        <div class="field inline"><label for="inColl">Collector</label><div class="num"><input id="inColl" type="number" min="-400" max="400" step="10"><span class="unit">V</span></div></div>
+      </details>
+    </section>
+
+    <!-- Imaging / optics -->
+    <section class="card">
+      <header><h3>Image</h3><span class="state" id="eoState">–</span></header>
+      <div class="field inline">
+        <label for="inMag">Mag</label>
+        <div class="num"><button class="step" data-mul="0.5" data-for="inMag">÷2</button><input id="inMag" type="number" min="10" max="500000" step="1"><button class="step" data-mul="2" data-for="inMag">×2</button><span class="unit">×</span></div>
+      </div>
+      <div class="slider"><label>Focus</label><input type="range" id="slFocus" min="0" max="4095" step="1"><output id="oFocus"></output></div>
+      <div class="slider"><label>Stig X</label><input type="range" id="slStigX" min="0" max="4095" step="1"><output id="oStigX"></output></div>
+      <div class="slider"><label>Stig Y</label><input type="range" id="slStigY" min="0" max="4095" step="1"><output id="oStigY"></output></div>
+      <div class="slider"><label>Brightness</label><input type="range" id="slBright" min="0" max="4095" step="1"><output id="oBright"></output></div>
+      <div class="row2">
+        <button id="btnWobble" class="toggle">Focus wobble</button>
+        <button id="btnStigReset" class="ghost">Centre stigmators</button>
+      </div>
+      <details class="more">
+        <summary>Scan geometry</summary>
+        <div class="field inline"><label for="inRot">Rotation</label><div class="num"><input id="inRot" type="number" min="-360" max="360" step="1"><span class="unit">°</span></div></div>
+        <div class="field inline"><label for="inWd">WD</label><div class="num"><input id="inWd" type="number" min="1" max="60" step="0.5"><span class="unit">mm</span></div></div>
+        <div class="field inline"><label for="inTilt">Tilt corr.</label><div class="num"><input id="inTilt" type="number" min="-89" max="89" step="1"><span class="unit">°</span></div></div>
+        <div class="field inline"><label>Beam shift</label><div class="num"><input id="inShX" type="number" min="-2047" max="2047" step="10" title="X"><input id="inShY" type="number" min="-2047" max="2047" step="10" title="Y"></div></div>
+      </details>
+    </section>
+
+    <!-- Stage -->
+    <section class="card">
+      <header><h3>Stage</h3><span class="state" id="stgState">–</span></header>
+      <div class="axes" id="axes">
+        <div><span>X</span><b id="ax0">–</b><i>mm</i></div>
+        <div><span>Y</span><b id="ax1">–</b><i>mm</i></div>
+        <div><span>Z</span><b id="ax2">–</b><i>mm</i></div>
+        <div><span>T</span><b id="ax3">–</b><i>°</i></div>
+        <div><span>R</span><b id="ax4">–</b><i>°</i></div>
+      </div>
+      <div class="jog">
+        <div class="pad">
+          <button data-jog="0,1">▲</button>
+          <button data-jog="-1,0">◀</button><button class="stop" id="btnStageStop">■</button><button data-jog="1,0">▶</button>
+          <button data-jog="0,-1">▼</button>
+        </div>
+        <div class="jogside">
+          <label>Step</label>
+          <select id="selJog"><option value="0.01">10 µm</option><option value="0.1" selected>100 µm</option><option value="1">1 mm</option><option value="5">5 mm</option></select>
+          <label>Joystick</label>
+          <input type="range" id="slJoy" min="-2" max="2" step="0.1" value="0" title="Joystick sensitivity">
+        </div>
+      </div>
+      <details class="more">
+        <summary>Go to</summary>
+        <div class="goto">
+          <input id="gX" placeholder="X" type="number" step="0.01"><input id="gY" placeholder="Y" type="number" step="0.01"><input id="gZ" placeholder="Z" type="number" step="0.01"><input id="gT" placeholder="T" type="number" step="0.1"><input id="gR" placeholder="R" type="number" step="0.1">
+        </div>
+        <div class="row2"><button id="btnGoto" class="action">Go</button><button id="btnHome" class="ghost">Initialise stage</button></div>
+      </details>
+    </section>
+
+    <button class="stopall" id="btnStopAll" title="Beam off, stage stop, abort sequences (Esc)">STOP</button>
+  </aside>
+</main>
+
+<footer class="eventbar" id="eventbar"><span class="lvl"></span><span id="lastEvent">Not connected</span></footer>
+
+<!-- ============================================================ developer -->
+<section class="dev" id="dev" hidden>
+  <header class="devhead">
+    <h2>Developer</h2>
+    <nav class="tabs" id="devTabs">
+      <button data-tab="settings" class="on">Settings</button>
+      <button data-tab="traffic">Link traffic</button>
+      <button data-tab="console">Console</button>
+      <button data-tab="obi">OBI / imaging</button>
+      <button data-tab="status">Status JSON</button>
+    </nav>
+    <button class="ghost" id="btnDevClose">Hide</button>
+  </header>
+
+  <div class="tab" data-tab="settings">
+    <div class="toolbar">
+      <input id="setFilter" type="search" placeholder="Filter settings (e.g. eht. or joystick)">
+      <select id="setGroup"><option value="">All groups</option></select>
+      <label class="check"><input type="checkbox" id="setChanged"> Changed only</label>
+      <span class="grow"></span>
+      <button id="btnSetReload" class="ghost">Reload</button>
+      <button id="btnSetSave" class="action">Save to flash</button>
+    </div>
+    <p class="note">Values are written to the control box immediately and stored in flash after a few seconds. <span id="setCount"></span></p>
+    <div class="tablewrap"><table class="settings" id="setTable">
+      <thead><tr><th>Name</th><th>Value</th><th>Default</th><th>Range</th><th>Unit</th><th>Description</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+
+  <div class="tab" data-tab="traffic" hidden>
+    <div class="toolbar">
+      <span>Trace</span>
+      <label class="check"><input type="checkbox" data-trace="eht"> EHT</label>
+      <label class="check"><input type="checkbox" data-trace="stg"> Stage/vacuum</label>
+      <label class="check"><input type="checkbox" data-trace="vp"> VP</label>
+      <label class="check"><input type="checkbox" id="trEvents" checked> Events</label>
+      <label class="check"><input type="checkbox" id="trUsb"> USB commands</label>
+      <input id="trFilter" type="search" placeholder="Filter">
+      <span class="grow"></span>
+      <label class="check"><input type="checkbox" id="trPause"> Pause</label>
+      <button class="ghost" id="btnTrClear">Clear</button>
+      <button class="ghost" id="btnTrSave">Save log</button>
+    </div>
+    <div class="traffic" id="traffic"></div>
+    <div class="toolbar">
+      <select id="rawLink"><option value="stg">stg</option><option value="eht">eht</option><option value="vp">vp</option></select>
+      <input id="rawText" class="mono grow" placeholder="Raw link command, e.g. .VT  (needs dbg.raw = 1; bypasses interlocks)">
+      <button class="action" id="btnRawSend">Send raw</button>
+    </div>
+  </div>
+
+  <div class="tab" data-tab="console" hidden>
+    <p class="note">Control box protocol commands (firmware/PROTOCOL.md), e.g. <code>help</code>, <code>status</code>, <code>eo r 3 13</code>, <code>stage home</code>.</p>
+    <div class="traffic" id="console"></div>
+    <div class="toolbar"><input id="conIn" class="mono grow" placeholder="Command" autocomplete="off"><button class="action" id="btnConSend">Send</button></div>
+  </div>
+
+  <div class="tab" data-tab="obi" hidden>
+    <div class="grid2">
+      <div>
+        <h4>Connection</h4>
+        <dl class="kv">
+          <dt>Bridge</dt><dd id="obiBridge">–</dd>
+          <dt>OBI applet</dt><dd id="obiApplet">–</dd>
+          <dt>Frames / s</dt><dd id="obiFps">–</dd>
+          <dt>Data rate</dt><dd id="obiRate">–</dd>
+          <dt>Resyncs</dt><dd id="obiResync">–</dd>
+          <dt>Last frame</dt><dd id="obiLast">–</dd>
+        </dl>
+        <div class="row2"><button class="ghost" id="btnObiReconnect">Reconnect</button><button class="ghost" id="btnObiAbort">Abort scan</button></div>
+      </div>
+      <div>
+        <h4>Imaging parameters (this browser)</h4>
+        <div class="field inline"><label>Dwell unit</label><div class="num"><input id="pDwellUnit" type="number" min="1" step="0.01"><span class="unit">ns / count</span></div></div>
+        <div class="field inline"><label>Bits (live)</label><select id="pBits"><option value="8">8</option><option value="16">16</option></select></div>
+        <div class="field inline"><label>HFW at 1×</label><div class="num"><input id="pHfw1" type="number" min="1" step="1"><span class="unit">mm</span></div></div>
+        <div class="field inline"><label>Focus / notch</label><div class="num"><input id="pFocusStep" type="number" min="0.1" step="0.1"><span class="unit">counts @100×</span></div></div>
+        <div class="field inline"><label>Stig / notch</label><div class="num"><input id="pStigStep" type="number" min="1" step="1"><span class="unit">counts</span></div></div>
+        <div class="field inline"><label>Centre X / Y sign</label><div class="num"><select id="pCtrX"><option value="1">+</option><option value="-1">−</option></select><select id="pCtrY"><option value="1">+</option><option value="-1">−</option></select></div></div>
+        <label class="check"><input type="checkbox" id="pExtCtrl"> Send OBI ExternalCtrl on connect</label>
+        <label class="check"><input type="checkbox" id="pDemo"> Demo image source (no OBI)</label>
+        <label class="check"><input type="checkbox" id="pScanExt" checked> Put the EO board in external scan when Live starts</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab" data-tab="status" hidden>
+    <pre class="json" id="statusJson">–</pre>
+  </div>
+</section>
+
+<!-- ============================================================ dialogs -->
+<dialog id="dlg">
+  <form method="dialog">
+    <h3 id="dlgTitle"></h3>
+    <p id="dlgText"></p>
+    <div class="row2"><button value="cancel" class="ghost">Cancel</button><button value="ok" class="action warn" id="dlgOk">Confirm</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
