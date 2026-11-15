@@ -32,7 +32,8 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
 - **Detector strip under the image:**
   - histogram of the raw OBI values over the full 16-bit range, with two draggable lines: left = black, right = white (drag between them to move both). They set the live display and are applied to saved TIFFs (the levels are recorded in the TIFF description);
   - PMT voltage (LEO-32's "brightness": PM HV channel 1 on the EHT set), slider and number box;
-  - SE collector voltage.
+  - SE collector voltage, slider and number box;
+  - probe current in pA (logarithmic slider over the box's calibrated range). Optibeam is always on, so the condenser follows the probe current; there is no Optibeam switch.
   - Data bar: HFW, magnification, kV, WD, dwell, pixels, vacuum, frame rate.
 - **Mouse on the image:**
   - wheel: focus;

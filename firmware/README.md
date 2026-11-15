@@ -117,7 +117,7 @@ Action codes: 0 none, 1 safe, 2 beam on, 3 beam off, 4 stage stop, 5 EHT off, 6 
 ## Known limits / open items
 
 - No hardware test yet. The EO bit-banged timing (162.8 CPU cycles per bit, 0.16 % of the rate) and the F4 reply sampling need a scope check.
-- Condenser values are set directly (`cond`). There is no Optibeam lens model yet, so probe current is controlled through the condenser DACs.
+- Optibeam (probe current → condenser) is a table of four points captured from LEO-32 at 5 kV and 50 / 300 / 500 / 1000 pA (`eo.pc1..4`, two spare rows), interpolated in log(probe current) per DAC. The objective is not refocused with it, and the kV dependence is off (`eo.pc_kvexp 0`): the captures at 20 / 21 / 25 kV showed the main condenser DAC nearly constant. Measure the real probe current (Faraday cup) and correct the table; add rows for other kV or apertures as needed.
 - `eo.wd_rot` sign and `eo.wd_exp` come from one WD change (10 → 15 mm); verify them.
 - The per-range scan calibration (`eo.k*`, `eo.d*`, `eo.ky*`, `eo.e*`) was fitted from the captured weights at WD 15 mm, assuming the captures were taken at `eo.kv_ref` = 20 kV.
 - The EHT fault bits 0x04 / 0x02 are as in the original firmware and have not been seen on the wire.

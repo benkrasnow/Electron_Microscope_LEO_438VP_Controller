@@ -149,6 +149,50 @@ void Eo::applyPins() {
   }
 }
 
+static double relKv(double kv) { return kv * (1.0 + 0.978e-3 * kv); }
+
+// Optibeam: probe current -> condenser DACs, interpolated in log(probe current) through the
+// eo.pc* table (captured with LEO-32 at eo.pc_kvref), clamped to the table's range, optionally
+// scaled with relativistic kV. Each DAC is interpolated on its own.
+static int pcTable(double pa[6], double d[6][4]) {
+  int n = 0;
+  for (int i = 0; i < 6; i++) {
+    double p = sd((SettingId)(EO_PC1_PA + i * 5));
+    if (p <= 0) continue;
+    int k = n++;
+    while (k > 0 && pa[k - 1] > p) { pa[k] = pa[k - 1]; for (int j = 0; j < 4; j++) d[k][j] = d[k - 1][j]; k--; }
+    pa[k] = p;
+    for (int j = 0; j < 4; j++) d[k][j] = sd((SettingId)(EO_PC1_PA + i * 5 + 1 + j));
+  }
+  return n;
+}
+
+bool Eo::probeRange(double& lo, double& hi) {
+  double pa[6], d[6][4];
+  int n = pcTable(pa, d);
+  if (!n) return false;
+  lo = pa[0]; hi = pa[n - 1];
+  return true;
+}
+
+void Eo::updateOptibeam() {
+  if (!si(EO_OPTIBEAM)) return;
+  double pa[6], d[6][4];
+  int n = pcTable(pa, d);
+  if (!n) return;
+  double p = constrain(sd(OP_PROBE_PA), pa[0], pa[n - 1]);
+  int k = 0;
+  while (k < n - 2 && p > pa[k + 1]) k++;
+  double t = n == 1 || pa[k + 1] == pa[k] ? 0 : (log(p) - log(pa[k])) / (log(pa[k + 1]) - log(pa[k]));
+  double kv = kvUsed_ > 0 ? kvUsed_ : sd(OP_KV);
+  double scale = pow(relKv(kv) / relKv(sd(EO_PC_KVREF)), sd(EO_PC_KVEXP));
+  for (int j = 0; j < 4; j++) {
+    double v = n == 1 ? d[0][j] : d[k][j] + t * (d[k + 1][j] - d[k][j]);
+    v = constrain(round(v * scale), 0.0, 4095.0);
+    if (v != sd((SettingId)(OP_COND0 + j))) settingSet(OP_COND0 + j, v);
+  }
+}
+
 void Eo::begin() {
   pinMode(PIN_EO_F3, OUTPUT);
   pinMode(PIN_EO_F1, OUTPUT);
@@ -159,6 +203,7 @@ void Eo::begin() {
   applyPins();
   tLine.priority(si(SCAN_ISR_PRIO));
   tGate.priority(si(SCAN_ISR_PRIO));
+  updateOptibeam();
   restoreAll();
 }
 
@@ -207,7 +252,6 @@ int Eo::c3opt() const {
   return (si(OP_SCAN) == SCAN_EXT ? 0xF0 : 0xF8) | r;
 }
 
-static double relKv(double kv) { return kv * (1.0 + 0.978e-3 * kv); }
 
 void Eo::computeWeights(int& rng, uint16_t w[4], uint16_t& shA, uint16_t& shB) const {
   double mag = max(sd(OP_MAG), 1e-3);
@@ -480,13 +524,14 @@ void Eo::service(float kvSettled) {
     if (kvUsed_ > 0) {
       double ratio = sqrt(relKv(kvSettled) / relKv(kvUsed_));
       if (si(EO_KV_OBJ)) settingSet(OP_OBJ_C, constrain(sd(OP_OBJ_C) * ratio, 0.0, 4095.0));
-      if (si(EO_KV_COND))
+      if (si(EO_KV_COND) && !si(EO_OPTIBEAM))
         for (int i = 0; i < 4; i++) settingSet(OP_COND0 + i, constrain(sd((SettingId)(OP_COND0 + i)) * ratio, 0.0, 4095.0));
     }
     kvUsed_ = kvSettled;
     optics = true;
   }
   calDirty_ = false;
+  updateOptibeam();
 
   if (si(OP_SCAN) != aScan_ || si(OP_SPEED) != aSpeed_) {
     aScan_ = si(OP_SCAN); aSpeed_ = si(OP_SPEED);

@@ -83,7 +83,8 @@ Each one sets an `op.*` setting. The subsystem modules follow the settings: the 
 | `focus <fine> [coarse]` | `op.obj_f`, `op.obj_c` | objective DACs (read-modify-write like the original) |
 | `stig <x> <y>` | `op.stig_x/y` | |
 | `shift <x> <y>` | `op.shift_x/y` | beam shift in image axes, ±2047 counts, rotated with the scan |
-| `cond <d0> <d1> <d2> <d3>` | `op.cond0..3` | condenser DACs (no Optibeam model yet) |
+| `probe <pA>` | `op.probe_pa` | probe current. Optibeam (`eo.optibeam 1`, always on for operators) sets the condenser from it: log interpolation through the `eo.pc*` table, limited to the table's range |
+| `cond <d0> <d1> <d2> <d3>` | `op.cond0..3` | condenser DACs directly; refused while `eo.optibeam = 1` |
 | `scan ext\|raster\|line\|spot` | `op.scan` | `ext` = OBI drives the external scan input |
 | `speed <0-15>` | `op.speed` | internal scan speed |
 | `spot <x> <y>`, `line <y>` | `op.spot_*`, `op.line_y` | 16-bit positions |
@@ -127,7 +128,7 @@ Moves need an initialised stage (`stg.req_home`). The joystick on the stage cont
  "stg":{"valid":true,"homed":true,"mv":false,"lim":false,"homing":false,
         "pos":[50,50,1,0,0],"c":[8388608,8286749,7323727,8388608,8388608]},
  "eo":{"link":true,"mode":"external","mag":100,"range":1,"speed":5,"rot":0,"wd":15,"tilt":0,
-       "objc":790,"focus":2234,"stigx":2048,"stigy":2048,"wob":0,"frz":false,"frames":0,"q":0,"line_us":2811},
+       "objc":790,"focus":2234,"stigx":2048,"stigy":2048,"probe":300,"pcmin":50,"pcmax":1000,"obeam":true,"wob":0,"frz":false,"frames":0,"q":0,"line_us":2811},
  "btn":[0,0,0]}
 ```
 
@@ -145,6 +146,7 @@ Moves need an initialised stage (`stg.req_home`). The joystick on the stage cont
 | `eht.kv`, `eht.fil` | values actually sent (they lag the setpoints during ramps) |
 | `stg.pos` | X Y Z in mm, T R in degrees (UI coordinates); `stg.c` = raw counts |
 | `eo.link` | EO read-back check OK (chip 3 options returns the last value written) |
+| `eo.probe`, `eo.pcmin`, `eo.pcmax` | probe current setpoint and the calibrated range of the Optibeam table |
 
 ## 5. Example session
 

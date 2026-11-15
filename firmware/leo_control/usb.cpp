@@ -142,6 +142,8 @@ void jsonStatus(char* buf, size_t n) {
     j.bo("link", eo.linkOk()); j.str("mode", eo.modeName()); j.num("mag", sf(OP_MAG)); j.i("range", eo.range());
     j.i("speed", si(OP_SPEED)); j.num("rot", sf(OP_ROT)); j.num("wd", sf(OP_WD)); j.num("tilt", sf(OP_TILT));
     j.num("objc", sf(OP_OBJ_C)); j.num("focus", sf(OP_OBJ_F)); j.i("stigx", si(OP_STIG_X)); j.i("stigy", si(OP_STIG_Y));
+    { double lo = 0, hi = 0; Eo::probeRange(lo, hi);
+      j.num("probe", sf(OP_PROBE_PA)); j.num("pcmin", lo); j.num("pcmax", hi); j.bo("obeam", si(EO_OPTIBEAM)); }
     j.num("wob", sf(OP_WOB_PCT)); j.bo("frz", eo.frozen()); j.i("frames", eo.frames()); j.i("q", eo.queued());
     j.num("line_us", eo.linePeriodUs());
   j.close();
@@ -181,6 +183,11 @@ static const char* setOp(SettingId id, double v) {
     case OP_EMIS_UA: if (v > sd(EHT_EMIS_MAX_UA)) return "above eht.emis_max_ua"; break;
     case OP_MAG: if (v < sd(EO_MAG_MIN) || v > sd(EO_MAG_MAX)) return "magnification outside eo.mag_min..eo.mag_max"; break;
     case OP_VP_PA: return machine.vpTarget(v);
+    case OP_PROBE_PA: {
+      double lo, hi;
+      if (si(EO_OPTIBEAM) && Eo::probeRange(lo, hi) && (v < lo || v > hi)) return "probe current outside the calibrated range (eo.pc* table)";
+      break;
+    }
     default: break;
   }
   return settingSet(id, v);
@@ -296,11 +303,11 @@ static void command(char* s) {
   // ---- setpoints (each maps to an op.* setting; the subsystems follow it)
   else if (!strcmp(c, "kv") || !strcmp(c, "fil") || !strcmp(c, "emis") || !strcmp(c, "coll") ||
            !strcmp(c, "bright") || !strcmp(c, "mag") || !strcmp(c, "rot") || !strcmp(c, "wd") ||
-           !strcmp(c, "tilt") || !strcmp(c, "speed") || !strcmp(c, "dynfocus") || !strcmp(c, "line")) {
+           !strcmp(c, "tilt") || !strcmp(c, "speed") || !strcmp(c, "dynfocus") || !strcmp(c, "line") || !strcmp(c, "probe")) {
     static const struct { const char* n; SettingId id; } m[] = {
       {"kv", OP_KV}, {"fil", OP_FIL_MA}, {"emis", OP_EMIS_UA}, {"coll", OP_COLL_V}, {"bright", OP_PM1},
       {"mag", OP_MAG}, {"rot", OP_ROT}, {"wd", OP_WD}, {"tilt", OP_TILT}, {"speed", OP_SPEED},
-      {"dynfocus", OP_DYNF}, {"line", OP_LINE_Y} };
+      {"dynfocus", OP_DYNF}, {"line", OP_LINE_Y}, {"probe", OP_PROBE_PA} };
     SettingId k = OP_KV;
     for (auto& e : m) if (!strcmp(c, e.n)) k = e.id;
     if (n < 2 || !num(t[1], v)) { reply(id, false, "value expected"); return; }
@@ -325,6 +332,7 @@ static void command(char* s) {
     reply(id, !err, err);
   }
   else if (!strcmp(c, "cond")) {
+    if (si(EO_OPTIBEAM)) { reply(id, false, "Optibeam is on: set the probe current (eo.optibeam 0 for direct condenser values)"); return; }
     if (n < 5) { reply(id, false, "cond <d0> <d1> <d2> <d3>"); return; }
     for (int i = 0; i < 4 && !err; i++) { if (!num(t[1 + i], v)) err = "bad number"; else err = setOp((SettingId)(OP_COND0 + i), v); }
     reply(id, !err, err);
@@ -391,7 +399,7 @@ static void command(char* s) {
   else if (!strcmp(c, "bootloader")) { reply(id, true); Serial.flush(); delay(20); _reboot_Teensyduino_(); }
   else if (!strcmp(c, "help")) {
     out("{\"t\":\"help\",\"cmds\":\"hello status tel get set list default save pump vent beam eht safe abort vp kv fil emis coll bright pm "
-        "mag rot wd tilt speed scan spot line focus stig shift cond wobble dynfocus freeze stage eo raw trace log time reboot bootloader\"}");
+        "mag rot wd tilt speed probe scan spot line focus stig shift cond wobble dynfocus freeze stage eo raw trace log time reboot bootloader\"}");
     reply(id, true);
   }
   else reply(id, false, "unknown command");

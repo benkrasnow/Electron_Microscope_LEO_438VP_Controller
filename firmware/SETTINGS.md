@@ -1,6 +1,6 @@
 # Control box settings
 
-All 307 runtime settings, generated from `leo_control/settings.h` by `tools/gen_settings_doc.py`. Read and change them over USB with `get`, `set`, `list`, `default` (see PROTOCOL.md); they are kept in flash.
+All 341 runtime settings, generated from `leo_control/settings.h` by `tools/gen_settings_doc.py`. Read and change them over USB with `get`, `set`, `list`, `default` (see PROTOCOL.md); they are kept in flash.
 
 
 ## EHT / gun supply link
@@ -68,6 +68,7 @@ All 307 runtime settings, generated from `leo_control/settings.h` by `tools/gen_
 | `op.cond1` | 182 | 0 | 4095 |  | condenser chip 0 DAC1 |
 | `op.cond2` | 23 | 0 | 4095 |  | condenser chip 0 DAC2 |
 | `op.cond3` | 218 | 0 | 4095 |  | condenser chip 0 DAC3 |
+| `op.probe_pa` | 300 | 1 | 100000 | pA | probe current (Optibeam: sets the condenser through the eo.pc* table) |
 | `op.shift_x` | 0 | -2047 | 2047 |  | beam shift X (image axes, DAC counts) |
 | `op.shift_y` | 0 | -2047 | 2047 |  | beam shift Y |
 | `op.spot_x` | 32768 | 0 | 65535 |  | spot mode X position |
@@ -290,7 +291,40 @@ All 307 runtime settings, generated from `leo_control/settings.h` by `tools/gen_
 | `eo.mag_min` | 10 | 1 | 1e6 | x | lowest magnification accepted |
 | `eo.mag_max` | 500000 | 1 | 1e7 | x | highest magnification accepted |
 | `eo.kv_obj` | 1 | 0 | 1 |  | 1: scale objective coarse with sqrt(relativistic kV) on kV changes |
-| `eo.kv_cond` | 1 | 0 | 1 |  | 1: scale the condenser DACs the same way |
+| `eo.kv_cond` | 0 | 0 | 1 |  | 1: scale the condenser DACs with sqrt(kV) (only with eo.optibeam = 0) |
+| `eo.optibeam` | 1 | 0 | 1 |  | 1: condenser follows op.probe_pa through the eo.pc* table; 0: op.cond* set directly |
+| `eo.pc_kvref` | 5 | 0.5 | 30 | kV | kV at which the eo.pc* table was taken (captures: 5 kV) |
+| `eo.pc_kvexp` | 0 | -2 | 2 |  | condenser = table * (rel. kV / rel. kV_ref)^exp; 0 = no kV dependence |
+| `eo.pc1_pa` | 50 | 0 | 100000 | pA | Optibeam table point 1: probe current (0 = unused) |
+| `eo.pc1_d0` | 1111 | 0 | 4095 |  | point 1: condenser chip 0 DAC0 |
+| `eo.pc1_d1` | 137 | 0 | 4095 |  | point 1: condenser chip 0 DAC1 |
+| `eo.pc1_d2` | 317 | 0 | 4095 |  | point 1: condenser chip 0 DAC2 |
+| `eo.pc1_d3` | 33 | 0 | 4095 |  | point 1: condenser chip 0 DAC3 |
+| `eo.pc2_pa` | 300 | 0 | 100000 | pA | Optibeam table point 2: probe current (0 = unused) |
+| `eo.pc2_d0` | 1035 | 0 | 4095 |  | point 2: condenser chip 0 DAC0 |
+| `eo.pc2_d1` | 88 | 0 | 4095 |  | point 2: condenser chip 0 DAC1 |
+| `eo.pc2_d2` | 254 | 0 | 4095 |  | point 2: condenser chip 0 DAC2 |
+| `eo.pc2_d3` | 204 | 0 | 4095 |  | point 2: condenser chip 0 DAC3 |
+| `eo.pc3_pa` | 500 | 0 | 100000 | pA | Optibeam table point 3: probe current (0 = unused) |
+| `eo.pc3_d0` | 938 | 0 | 4095 |  | point 3: condenser chip 0 DAC0 |
+| `eo.pc3_d1` | 21 | 0 | 4095 |  | point 3: condenser chip 0 DAC1 |
+| `eo.pc3_d2` | 252 | 0 | 4095 |  | point 3: condenser chip 0 DAC2 |
+| `eo.pc3_d3` | 140 | 0 | 4095 |  | point 3: condenser chip 0 DAC3 |
+| `eo.pc4_pa` | 1000 | 0 | 100000 | pA | Optibeam table point 4: probe current (0 = unused) |
+| `eo.pc4_d0` | 827 | 0 | 4095 |  | point 4: condenser chip 0 DAC0 |
+| `eo.pc4_d1` | 155 | 0 | 4095 |  | point 4: condenser chip 0 DAC1 |
+| `eo.pc4_d2` | 250 | 0 | 4095 |  | point 4: condenser chip 0 DAC2 |
+| `eo.pc4_d3` | 4 | 0 | 4095 |  | point 4: condenser chip 0 DAC3 |
+| `eo.pc5_pa` | 0 | 0 | 100000 | pA | Optibeam table point 5: probe current (0 = unused) |
+| `eo.pc5_d0` | 0 | 0 | 4095 |  | point 5: condenser chip 0 DAC0 |
+| `eo.pc5_d1` | 0 | 0 | 4095 |  | point 5: condenser chip 0 DAC1 |
+| `eo.pc5_d2` | 0 | 0 | 4095 |  | point 5: condenser chip 0 DAC2 |
+| `eo.pc5_d3` | 0 | 0 | 4095 |  | point 5: condenser chip 0 DAC3 |
+| `eo.pc6_pa` | 0 | 0 | 100000 | pA | Optibeam table point 6: probe current (0 = unused) |
+| `eo.pc6_d0` | 0 | 0 | 4095 |  | point 6: condenser chip 0 DAC0 |
+| `eo.pc6_d1` | 0 | 0 | 4095 |  | point 6: condenser chip 0 DAC1 |
+| `eo.pc6_d2` | 0 | 0 | 4095 |  | point 6: condenser chip 0 DAC2 |
+| `eo.pc6_d3` | 0 | 0 | 4095 |  | point 6: condenser chip 0 DAC3 |
 | `eo.c3dac2` | 3006 | 0 | 4095 |  | chip 3 DAC2 constant |
 | `eo.c3dac3` | 565 | 0 | 4095 |  | chip 3 DAC3 constant |
 | `eo.xstart` | 110 | 0 | 4095 |  | chip 2 DAC1 X start offset, full frame |

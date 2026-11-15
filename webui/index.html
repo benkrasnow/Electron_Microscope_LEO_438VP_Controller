@@ -95,8 +95,12 @@
         <div class="detrow"><input type="range" id="slPmt" min="0" max="4095" step="1"><div class="num"><input id="inPmt" type="number" min="0" max="4095" step="1"></div></div>
       </div>
       <div class="det">
-        <label for="inColl">Collector</label>
-        <div class="num"><input id="inColl" type="number" min="-400" max="400" step="10"><span class="unit">V</span></div>
+        <label for="inColl">Collector voltage <small>(V)</small></label>
+        <div class="detrow"><input type="range" id="slColl" min="-400" max="400" step="5"><div class="num"><input id="inColl" type="number" min="-400" max="400" step="5"></div></div>
+      </div>
+      <div class="det">
+        <label for="inProbe">Probe current <small>(pA)</small></label>
+        <div class="detrow"><input type="range" id="slProbe" min="0" max="1000" step="1" title="Logarithmic"><div class="num"><input id="inProbe" type="number" min="1" step="any"></div></div>
       </div>
     </div>
 

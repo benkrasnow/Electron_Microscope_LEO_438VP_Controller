@@ -161,7 +161,11 @@ function render() {
   setVal($("inKv"), eht.kvset, 1);
   setVal($("inEmis"), eht.emis);
   setVal($("inFil"), eht.filset);
-  setVal($("inColl"), eht.coll);
+  setVal($("inColl"), eht.coll); setVal($("slColl"), eht.coll);
+  // Probe current (Optibeam is always on): logarithmic slider over the calibrated range.
+  if (eo.pcmax > 0) { probeRange = [eo.pcmin, eo.pcmax]; $("inProbe").min = eo.pcmin; $("inProbe").max = eo.pcmax; }
+  setVal($("inProbe"), eo.probe !== undefined ? +(+eo.probe).toPrecision(4) : undefined);
+  setVal($("slProbe"), eo.probe !== undefined ? probeToSlider(eo.probe) : undefined);
   $("filNow").textContent = eht.beam !== "off" && eht.beam !== "cooling" ? `now ${eht.fil} mA` : "";
   for (const b of $("kvPresets").children) b.classList.toggle("on", +b.dataset.kv === +eht.kvset);
 
@@ -292,6 +296,29 @@ function sliderTo(id, out, fn) {
 sliderTo("slFocus", "oFocus", (v) => sendLatest("focus", `focus ${v}`));
 sliderTo("slStigX", "oStigX", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
 sliderTo("slStigY", "oStigY", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
+// Collector voltage: slider and number box, like the PMT voltage.
+$("slColl").oninput = (e) => { touch(e.target); touch($("inColl")); $("inColl").value = e.target.value; sendLatest("coll", `coll ${e.target.value}`); };
+$("inColl").addEventListener("change", (e) => { touch($("slColl")); $("slColl").value = e.target.value; });
+
+// Probe current in pA; the slider is logarithmic between the ends of the box's Optibeam table.
+let probeRange = [50, 1000];
+const probeToSlider = (pa) => Math.round(1000 * Math.log(pa / probeRange[0]) / Math.log(probeRange[1] / probeRange[0]));
+const sliderToProbe = (v) => probeRange[0] * (probeRange[1] / probeRange[0]) ** (v / 1000);
+const fmtProbe = (pa) => +pa.toPrecision(pa < 100 ? 2 : 3);
+$("slProbe").oninput = (e) => {
+  touch(e.target); touch($("inProbe"));
+  const pa = fmtProbe(sliderToProbe(+e.target.value));
+  $("inProbe").value = pa;
+  sendLatest("probe", `probe ${pa}`);
+};
+$("inProbe").onchange = (e) => {
+  touch(e.target); touch($("slProbe"));
+  const pa = Math.min(probeRange[1], Math.max(probeRange[0], +e.target.value));
+  e.target.value = pa;
+  $("slProbe").value = probeToSlider(pa);
+  sendQ(`probe ${pa}`);
+};
+
 // PMT voltage ("brightness" in LEO-32): PM HV channel 1 on the EHT set (.1 command), via the box's "bright".
 $("slPmt").oninput = (e) => { touch(e.target); touch($("inPmt")); $("inPmt").value = e.target.value; sendLatest("bright", `bright ${e.target.value}`); };
 $("inPmt").onchange = (e) => { touch(e.target); touch($("slPmt")); $("slPmt").value = e.target.value; sendQ(`bright ${e.target.value}`); };
@@ -487,7 +514,7 @@ async function saveCapture(m) {
     kv: st?.eht.kvset, emission_ua: st?.eht.emis, mag: st?.eo.mag, wd_mm: st?.eo.wd, rotation_deg: st?.eo.rot,
     focus: st?.eo.focus, stig: [st?.eo.stigx, st?.eo.stigy], pmt_voltage: st?.eht.pm1,
     vacuum: st?.vac.st, pressure_torr: st?.vac.torr, vp_pa: st && st.vp.st >= 7 && st.vp.st <= 11 ? st.vp.pa : null,
-    stage_mm_deg: st?.stg.pos, collector_v: st?.eht.coll, demo: !!m.demo,
+    stage_mm_deg: st?.stg.pos, collector_v: st?.eht.coll, probe_current_pa: st?.eo.probe, demo: !!m.demo,
     black_level_16bit: Math.round(hist.lo * 65535), white_level_16bit: Math.round(hist.hi * 65535),
   };
   const desc = Object.entries(meta).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(",") : v}`).join("\n");

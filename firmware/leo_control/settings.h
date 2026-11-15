@@ -72,6 +72,7 @@ X(OP_COND0,          "op.cond0",          45,    0,    4095,   "",   FL_OP,  "co
 X(OP_COND1,          "op.cond1",          182,   0,    4095,   "",   FL_OP,  "condenser chip 0 DAC1") \
 X(OP_COND2,          "op.cond2",          23,    0,    4095,   "",   FL_OP,  "condenser chip 0 DAC2") \
 X(OP_COND3,          "op.cond3",          218,   0,    4095,   "",   FL_OP,  "condenser chip 0 DAC3") \
+X(OP_PROBE_PA,       "op.probe_pa",        300,   1,    100000, "pA",  FL_OP , "probe current (Optibeam: sets the condenser through the eo.pc* table)") \
 X(OP_SHIFT_X,        "op.shift_x",        0,     -2047,2047,   "",   FL_OP,  "beam shift X (image axes, DAC counts)") \
 X(OP_SHIFT_Y,        "op.shift_y",        0,     -2047,2047,   "",   FL_OP,  "beam shift Y") \
 X(OP_SPOT_X,         "op.spot_x",         32768, 0,    65535,  "",   FL_OP|FL_INT, "spot mode X position") \
@@ -268,7 +269,40 @@ X(EO_CY4,            "eo.cy4",            2301,  0,    4095,   "",   FL_INT, "ra
 X(EO_MAG_MIN,        "eo.mag_min",        10,    1,    1e6,    "x",  0,      "lowest magnification accepted") \
 X(EO_MAG_MAX,        "eo.mag_max",        500000,1,    1e7,    "x",  0,      "highest magnification accepted") \
 X(EO_KV_OBJ,         "eo.kv_obj",         1,     0,    1,      "",   FL_INT, "1: scale objective coarse with sqrt(relativistic kV) on kV changes") \
-X(EO_KV_COND,        "eo.kv_cond",        1,     0,    1,      "",   FL_INT, "1: scale the condenser DACs the same way") \
+X(EO_KV_COND,        "eo.kv_cond",         0,     0,    1,      "",    FL_INT, "1: scale the condenser DACs with sqrt(kV) (only with eo.optibeam = 0)") \
+X(EO_OPTIBEAM,       "eo.optibeam",        1,     0,    1,      "",    FL_INT, "1: condenser follows op.probe_pa through the eo.pc* table; 0: op.cond* set directly") \
+X(EO_PC_KVREF,       "eo.pc_kvref",        5,     0.5,  30,     "kV",  0     , "kV at which the eo.pc* table was taken (captures: 5 kV)") \
+X(EO_PC_KVEXP,       "eo.pc_kvexp",        0,     -2,   2,      "",    0     , "condenser = table * (rel. kV / rel. kV_ref)^exp; 0 = no kV dependence") \
+X(EO_PC1_PA,         "eo.pc1_pa",          50,    0,    100000, "pA",  0     , "Optibeam table point 1: probe current (0 = unused)") \
+X(EO_PC1_D0,         "eo.pc1_d0",          1111,  0,    4095,   "",    0     , "point 1: condenser chip 0 DAC0") \
+X(EO_PC1_D1,         "eo.pc1_d1",          137,   0,    4095,   "",    0     , "point 1: condenser chip 0 DAC1") \
+X(EO_PC1_D2,         "eo.pc1_d2",          317,   0,    4095,   "",    0     , "point 1: condenser chip 0 DAC2") \
+X(EO_PC1_D3,         "eo.pc1_d3",          33,    0,    4095,   "",    0     , "point 1: condenser chip 0 DAC3") \
+X(EO_PC2_PA,         "eo.pc2_pa",          300,   0,    100000, "pA",  0     , "Optibeam table point 2: probe current (0 = unused)") \
+X(EO_PC2_D0,         "eo.pc2_d0",          1035,  0,    4095,   "",    0     , "point 2: condenser chip 0 DAC0") \
+X(EO_PC2_D1,         "eo.pc2_d1",          88,    0,    4095,   "",    0     , "point 2: condenser chip 0 DAC1") \
+X(EO_PC2_D2,         "eo.pc2_d2",          254,   0,    4095,   "",    0     , "point 2: condenser chip 0 DAC2") \
+X(EO_PC2_D3,         "eo.pc2_d3",          204,   0,    4095,   "",    0     , "point 2: condenser chip 0 DAC3") \
+X(EO_PC3_PA,         "eo.pc3_pa",          500,   0,    100000, "pA",  0     , "Optibeam table point 3: probe current (0 = unused)") \
+X(EO_PC3_D0,         "eo.pc3_d0",          938,   0,    4095,   "",    0     , "point 3: condenser chip 0 DAC0") \
+X(EO_PC3_D1,         "eo.pc3_d1",          21,    0,    4095,   "",    0     , "point 3: condenser chip 0 DAC1") \
+X(EO_PC3_D2,         "eo.pc3_d2",          252,   0,    4095,   "",    0     , "point 3: condenser chip 0 DAC2") \
+X(EO_PC3_D3,         "eo.pc3_d3",          140,   0,    4095,   "",    0     , "point 3: condenser chip 0 DAC3") \
+X(EO_PC4_PA,         "eo.pc4_pa",          1000,  0,    100000, "pA",  0     , "Optibeam table point 4: probe current (0 = unused)") \
+X(EO_PC4_D0,         "eo.pc4_d0",          827,   0,    4095,   "",    0     , "point 4: condenser chip 0 DAC0") \
+X(EO_PC4_D1,         "eo.pc4_d1",          155,   0,    4095,   "",    0     , "point 4: condenser chip 0 DAC1") \
+X(EO_PC4_D2,         "eo.pc4_d2",          250,   0,    4095,   "",    0     , "point 4: condenser chip 0 DAC2") \
+X(EO_PC4_D3,         "eo.pc4_d3",          4,     0,    4095,   "",    0     , "point 4: condenser chip 0 DAC3") \
+X(EO_PC5_PA,         "eo.pc5_pa",          0,     0,    100000, "pA",  0     , "Optibeam table point 5: probe current (0 = unused)") \
+X(EO_PC5_D0,         "eo.pc5_d0",          0,     0,    4095,   "",    0     , "point 5: condenser chip 0 DAC0") \
+X(EO_PC5_D1,         "eo.pc5_d1",          0,     0,    4095,   "",    0     , "point 5: condenser chip 0 DAC1") \
+X(EO_PC5_D2,         "eo.pc5_d2",          0,     0,    4095,   "",    0     , "point 5: condenser chip 0 DAC2") \
+X(EO_PC5_D3,         "eo.pc5_d3",          0,     0,    4095,   "",    0     , "point 5: condenser chip 0 DAC3") \
+X(EO_PC6_PA,         "eo.pc6_pa",          0,     0,    100000, "pA",  0     , "Optibeam table point 6: probe current (0 = unused)") \
+X(EO_PC6_D0,         "eo.pc6_d0",          0,     0,    4095,   "",    0     , "point 6: condenser chip 0 DAC0") \
+X(EO_PC6_D1,         "eo.pc6_d1",          0,     0,    4095,   "",    0     , "point 6: condenser chip 0 DAC1") \
+X(EO_PC6_D2,         "eo.pc6_d2",          0,     0,    4095,   "",    0     , "point 6: condenser chip 0 DAC2") \
+X(EO_PC6_D3,         "eo.pc6_d3",          0,     0,    4095,   "",    0     , "point 6: condenser chip 0 DAC3") \
 X(EO_C3DAC2,         "eo.c3dac2",         3006,  0,    4095,   "",   FL_INT, "chip 3 DAC2 constant") \
 X(EO_C3DAC3,         "eo.c3dac3",         565,   0,    4095,   "",   FL_INT, "chip 3 DAC3 constant") \
 X(EO_XSTART,         "eo.xstart",         110,   0,    4095,   "",   FL_INT, "chip 2 DAC1 X start offset, full frame") \

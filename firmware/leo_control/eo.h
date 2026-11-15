@@ -23,6 +23,7 @@ public:
   void restartFrame();
 
   bool linkOk() const { return linkOk_; }
+  static bool probeRange(double& lo, double& hi);   // probe current range of the Optibeam table
   int  range() const { return range_; }
   const uint16_t* weights() const { return w_; }
   int  queued() const;
@@ -32,6 +33,7 @@ public:
   const char* modeName() const;
 
 private:
+  void updateOptibeam();
   void computeWeights(int& rng, uint16_t w[4], uint16_t& shA, uint16_t& shB) const;
   void applyOptics(bool force);
   void applyLenses(bool obj, bool cond);
