@@ -14,7 +14,7 @@ let live = false, capturing = false, resumeLive = false;
 let obiState = { bridge: false, obi: false, demo: false };
 
 // ---------------------------------------------------------------- preferences (this browser)
-const PREF_DEFAULTS = { res: "512x512", speed: "500", photo: "2048x1536", photoDwell: "4000", dispC: 50, dispB: 50,
+const PREF_DEFAULTS = { res: "512x512", speed: "500", photo: "2048x1536", photoDwell: "4000", histLo: 0, histHi: 1,
   dwellUnit: 125, bits: 8, hfw1: 110, focusStep: 2, stigStep: 8, ctrX: 1, ctrY: 1, extCtrl: false, demo: false, scanExt: true, jog: "0.1" };
 const prefs = Object.assign({}, PREF_DEFAULTS, (() => { try { return JSON.parse(localStorage.getItem("leo.prefs") || "{}"); } catch { return {}; } })());
 const savePrefs = () => { try { localStorage.setItem("leo.prefs", JSON.stringify(prefs)); } catch {} };
@@ -110,7 +110,7 @@ box.addEventListener("reply", (e) => { if ($("trUsb").checked) trafficLine(`usb 
 // ---------------------------------------------------------------- status rendering
 function render() {
   const on = !!st;
-  for (const b of document.querySelectorAll(".sidebar button, .sidebar input, .sidebar select")) if (b.id !== "btnStopAll") b.disabled = !on;
+  for (const b of document.querySelectorAll(".sidebar button, .sidebar input, .sidebar select, .detbar input")) if (b.id !== "btnStopAll") b.disabled = !on;
   if (!st) {
     for (const id of ["chipVacTxt", "chipBeamTxt", "chipModeTxt"]) $(id).textContent = "–";
     for (const id of ["chipVac", "chipBeam"]) chip($(id), null);
@@ -171,7 +171,7 @@ function render() {
   setVal($("slFocus"), Math.round(eo.focus)); $("oFocus").textContent = Math.round(eo.focus);
   setVal($("slStigX"), eo.stigx); $("oStigX").textContent = eo.stigx;
   setVal($("slStigY"), eo.stigy); $("oStigY").textContent = eo.stigy;
-  setVal($("slBright"), eht.pm1); $("oBright").textContent = eht.pm1;
+  setVal($("slPmt"), eht.pm1); setVal($("inPmt"), eht.pm1);
   $("btnWobble").classList.toggle("on", eo.wob > 0);
   setVal($("inRot"), eo.rot); setVal($("inWd"), eo.wd); setVal($("inTilt"), eo.tilt);
 
@@ -292,7 +292,9 @@ function sliderTo(id, out, fn) {
 sliderTo("slFocus", "oFocus", (v) => sendLatest("focus", `focus ${v}`));
 sliderTo("slStigX", "oStigX", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
 sliderTo("slStigY", "oStigY", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
-sliderTo("slBright", "oBright", (v) => sendLatest("bright", `bright ${v}`));
+// PMT voltage ("brightness" in LEO-32): PM HV channel 1 on the EHT set (.1 command), via the box's "bright".
+$("slPmt").oninput = (e) => { touch(e.target); touch($("inPmt")); $("inPmt").value = e.target.value; sendLatest("bright", `bright ${e.target.value}`); };
+$("inPmt").onchange = (e) => { touch(e.target); touch($("slPmt")); $("slPmt").value = e.target.value; sendQ(`bright ${e.target.value}`); };
 $("btnWobble").onclick = () => sendQ(`wobble ${st && st.eo.wob > 0 ? 0 : 50}`);
 $("btnStigReset").onclick = () => sendQ("stig 2048 2048");
 
@@ -316,7 +318,6 @@ const stopAll = () => { sendQ("safe"); toast("STOP: beam off, stage stopped, seq
 $("btnStopAll").onclick = stopAll;
 addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !$("dlg").open) stopAll();
-  if ((e.key === "a" || e.key === "A") && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) autoContrast();
 });
 
 // ---------------------------------------------------------------- imaging
@@ -354,33 +355,107 @@ $("btnCapture").onclick = () => {
   worker.postMessage({ type: "single", cfg: { w, h, bits: 16, dwellNs: +prefs.photoDwell, dwellUnitNs: +prefs.dwellUnit, mag: st ? st.eo.mag : 100, focus: st ? st.eo.focus : 2234 } });
 };
 
-function displayWindow() {
-  const c = +$("dispC").value, b = +$("dispB").value;
-  const width = 2 ** ((50 - c) / 20), centre = b / 100;
-  viewer.setWindow(centre - width / 2, centre + width / 2);
-}
-function autoContrast() {
-  if (!lastFrame) return;
-  const [lo, hi] = autoWindow(lastFrame.data, lastFrame.bits);
-  const width = hi - lo, centre = (lo + hi) / 2;
-  $("dispC").value = Math.max(0, Math.min(100, 50 - 20 * Math.log2(width)));
-  $("dispB").value = Math.round(centre * 100);
-  prefs.dispC = +$("dispC").value; prefs.dispB = +$("dispB").value; savePrefs();
-  viewer.setWindow(lo, hi);
-}
-$("dispC").value = prefs.dispC; $("dispB").value = prefs.dispB;
-$("dispC").oninput = $("dispB").oninput = () => { prefs.dispC = +$("dispC").value; prefs.dispB = +$("dispB").value; savePrefs(); displayWindow(); };
-$("btnAuto").onclick = autoContrast;
-displayWindow();
+// ---------------------------------------------------------------- histogram and black / white levels
+// Raw detector values over the full 16-bit range (8-bit frames are placed at value * 256).
+// The two lines are the black and white levels, as fractions of full scale; they set the
+// display window and are applied to saved images.
+const hist = { lo: +prefs.histLo, hi: +prefs.histHi, bins: new Float32Array(256), drag: null };
+const HIST_MIN_GAP = 1 / 256;
 
-let fpsCount = 0, firstFrame = true;
+function computeHist(f) {
+  const a = f.bits === 16 ? new Uint16Array(f.data) : new Uint8Array(f.data);
+  const shift = f.bits === 16 ? 8 : 0, b = new Uint32Array(256);
+  const stride = Math.max(1, Math.floor(a.length / 262144));
+  for (let i = 0; i < a.length; i += stride) b[a[i] >> shift]++;
+  let max = 1;
+  for (let i = 0; i < 256; i++) if (b[i] > max) max = b[i];
+  for (let i = 0; i < 256; i++) hist.bins[i] = Math.sqrt(b[i] / max);   // sqrt keeps small peaks visible
+}
+
+function drawHist() {
+  const c = $("hist"), dpr = devicePixelRatio || 1;
+  const W = Math.round(c.clientWidth * dpr), H = Math.round(c.clientHeight * dpr);
+  if (!W || !H) return;
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  const g = c.getContext("2d");
+  g.clearRect(0, 0, W, H);
+  const x0 = hist.lo * W, x1 = hist.hi * W;
+  g.fillStyle = "rgba(56, 189, 248, 0.13)";
+  g.fillRect(x0, 0, x1 - x0, H);
+  g.fillStyle = "#8592a3";
+  const bw = W / 256;
+  for (let i = 0; i < 256; i++) {
+    const h = hist.bins[i] * (H - 4);
+    if (h > 0) g.fillRect(i * bw, H - h, Math.max(1, bw - 0.5 * dpr), h);
+  }
+  g.fillStyle = "#38bdf8";
+  for (const x of [x0, x1]) g.fillRect(Math.round(x - dpr), 0, 2 * dpr, H);
+  g.beginPath();                                       // grab handles at the top of each line
+  for (const x of [x0, x1]) { g.moveTo(x - 5 * dpr, 0); g.lineTo(x + 5 * dpr, 0); g.lineTo(x, 7 * dpr); }
+  g.fill();
+}
+
+function applyLevels(save) {
+  viewer.setWindow(hist.lo, hist.hi);
+  drawHist();
+  if (save) { prefs.histLo = hist.lo; prefs.histHi = hist.hi; savePrefs(); }
+}
+
+{
+  const c = $("hist");
+  const frac = (e) => { const r = c.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); };
+  const near = (e) => {
+    const r = c.getBoundingClientRect(), px = e.clientX - r.left;
+    const d0 = Math.abs(px - hist.lo * r.width), d1 = Math.abs(px - hist.hi * r.width);
+    if (Math.min(d0, d1) <= 7) return d0 <= d1 ? "lo" : "hi";
+    const f = frac(e);
+    return f > hist.lo && f < hist.hi ? "both" : null;
+  };
+  c.addEventListener("pointermove", (e) => {
+    if (!hist.drag) { const n = near(e); c.style.cursor = n === "both" ? "grab" : n ? "ew-resize" : "default"; return; }
+    const f = frac(e);
+    if (hist.drag.what === "lo") hist.lo = Math.min(f, hist.hi - HIST_MIN_GAP);
+    else if (hist.drag.what === "hi") hist.hi = Math.max(f, hist.lo + HIST_MIN_GAP);
+    else {
+      const w = hist.drag.hi - hist.drag.lo;
+      const lo = Math.min(1 - w, Math.max(0, hist.drag.lo + f - hist.drag.f));
+      hist.lo = lo; hist.hi = lo + w;
+    }
+    applyLevels(false);
+  });
+  c.addEventListener("pointerdown", (e) => {
+    const what = near(e);
+    if (!what) return;
+    hist.drag = { what, f: frac(e), lo: hist.lo, hi: hist.hi };
+    c.setPointerCapture(e.pointerId);
+    if (what === "both") c.style.cursor = "grabbing";
+  });
+  const end = () => { if (hist.drag) { hist.drag = null; applyLevels(true); } };
+  c.addEventListener("pointerup", end);
+  c.addEventListener("pointercancel", end);
+  new ResizeObserver(drawHist).observe(c);
+}
+applyLevels(false);
+
+// Black / white levels applied to the pixel data of a saved image (same mapping as the display).
+function levelled(data, bits) {
+  const max = bits === 16 ? 65535 : 255;
+  const src = bits === 16 ? new Uint16Array(data) : new Uint8Array(data);
+  const out = bits === 16 ? new Uint16Array(src.length) : new Uint8Array(src.length);
+  const lo = hist.lo * max, k = max / Math.max((hist.hi - hist.lo) * max, 1e-9);
+  for (let i = 0; i < src.length; i++) { const v = (src[i] - lo) * k; out[i] = v <= 0 ? 0 : v >= max ? max : v + 0.5; }
+  return out.buffer;
+}
+
+let fpsCount = 0;
 worker.onmessage = async (ev) => {
   const m = ev.data;
   if (m.type === "frame") {
     lastFrame = { w: m.w, h: m.h, bits: m.bits, data: m.data };
     viewer.setFrame(m.w, m.h, m.bits, m.data);
+    computeHist(lastFrame);
+    drawHist();
     $("empty").style.display = "none";
-    if (firstFrame) { firstFrame = false; autoContrast(); }
     fpsCount++;
     $("obiLast").textContent = `${m.w}×${m.h}, ${m.bits} bit, ${m.ms.toFixed(0)} ms`;
     updateDatabar();
@@ -410,12 +485,13 @@ async function saveCapture(m) {
     instrument: "LEO 438VP", date: t.toISOString(), width: m.w, height: m.h, bits: m.bits,
     dwell_ns: m.meta.dwellNs, hfw_mm: hfwMm(), pixel_nm: (hfwMm() / m.w) * 1e6,
     kv: st?.eht.kvset, emission_ua: st?.eht.emis, mag: st?.eo.mag, wd_mm: st?.eo.wd, rotation_deg: st?.eo.rot,
-    focus: st?.eo.focus, stig: [st?.eo.stigx, st?.eo.stigy], brightness: st?.eht.pm1,
+    focus: st?.eo.focus, stig: [st?.eo.stigx, st?.eo.stigy], pmt_voltage: st?.eht.pm1,
     vacuum: st?.vac.st, pressure_torr: st?.vac.torr, vp_pa: st && st.vp.st >= 7 && st.vp.st <= 11 ? st.vp.pa : null,
-    stage_mm_deg: st?.stg.pos, demo: !!m.demo,
+    stage_mm_deg: st?.stg.pos, collector_v: st?.eht.coll, demo: !!m.demo,
+    black_level_16bit: Math.round(hist.lo * 65535), white_level_16bit: Math.round(hist.hi * 65535),
   };
   const desc = Object.entries(meta).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(",") : v}`).join("\n");
-  const blob = encodeTiff(m.w, m.h, m.bits, m.data, desc);
+  const blob = encodeTiff(m.w, m.h, m.bits, levelled(m.data, m.bits), desc);
   const name = `LEO_${t.toISOString().slice(0, 19).replace(/[:T]/g, "-")}_${fmtMag(st ? st.eo.mag : 0).replace(" ", "")}.tif`;
   try {
     if (window.showSaveFilePicker) {

@@ -29,7 +29,10 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
 - **Image area:**
   - Live / Freeze, scan speed (dwell time), live resolution.
   - Photo capture: resolution and dwell; saves a 16-bit TIFF with all parameters in the TIFF description, readable by ImageJ / Fiji.
-  - Display contrast / brightness and auto contrast (key **A**).
+- **Detector strip under the image:**
+  - histogram of the raw OBI values over the full 16-bit range, with two draggable lines: left = black, right = white (drag between them to move both). They set the live display and are applied to saved TIFFs (the levels are recorded in the TIFF description);
+  - PMT voltage (LEO-32's "brightness": PM HV channel 1 on the EHT set), slider and number box;
+  - SE collector voltage.
   - Data bar: HFW, magnification, kV, WD, dwell, pixels, vacuum, frame rate.
 - **Mouse on the image:**
   - wheel: focus;
@@ -38,8 +41,8 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
   - double-click: move the stage to centre that point.
 - **Side panels:**
   - Vacuum: pump, vent, HV / VP with target pressure.
-  - Beam: beam on/off, EHT with presets; emission, filament and collector under "Gun".
-  - Image: magnification, focus, stigmators, brightness (PM HV), focus wobble; rotation, WD, tilt correction and beam shift under "Scan geometry".
+  - Beam: beam on/off, EHT with presets; emission and filament under "Gun".
+  - Image: magnification, focus, stigmators, focus wobble; rotation, WD, tilt correction and beam shift under "Scan geometry".
   - Stage: positions, jog pad with step size, joystick sensitivity, go-to, initialise.
 - **STOP** (or **Esc**): beam off, stage stop, abort sequences.
 
@@ -69,7 +72,7 @@ Page preferences are kept in the browser (`localStorage`). Machine settings live
 | (all scripts) | plain scripts, not ES modules, so the page also runs from `file://` |
 | `js/teensy.js` | Web Serial client for the control box (command ids, replies, telemetry, auto-reconnect) |
 | `js/obi-worker.js` | Web Worker (started from a Blob of `obiWorkerMain`): OBI binary protocol (Synchronize / RasterRegion / RasterPixelRun / Flush), frame parsing with sync-cookie checks, demo source |
-| `js/viewer.js` | WebGL2 display (8-bit and 16-bit textures, display window in the shader), auto contrast |
+| `js/viewer.js` | WebGL2 display (8-bit and 16-bit textures, black / white levels applied in the shader) |
 | `js/tiff.js` | 8/16-bit TIFF writer |
 | `tools/mock_obi.py` | stand-in OBI TCP server for testing without a Glasgow (`--pace 0` = as fast as possible) |
 

@@ -95,18 +95,3 @@ class Viewer {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 }
-
-// Percentile window over a frame (sampled), for auto contrast. Returns normalised [lo, hi].
-function autoWindow(data, bits, lowPct = 0.5, highPct = 99.5) {
-  const a = bits === 16 ? new Uint16Array(data) : new Uint8Array(data);
-  const shift = bits === 16 ? 8 : 0, hist = new Uint32Array(256);
-  const stride = Math.max(1, Math.floor(a.length / 200000));
-  let n = 0;
-  for (let i = 0; i < a.length; i += stride) { hist[a[i] >> shift]++; n++; }
-  let acc = 0, lo = 0, hi = 255;
-  for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= (n * lowPct) / 100) { lo = i; break; } }
-  acc = 0;
-  for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= (n * (100 - highPct)) / 100) { hi = i; break; } }
-  if (hi <= lo) hi = lo + 1;
-  return [lo / 255, (hi + 1) / 256];
-}

@@ -68,9 +68,6 @@
       </label>
       <button id="btnCapture" class="accent">◉ Capture</button>
       <span class="grow"></span>
-      <button id="btnAuto" class="ghost" title="Auto contrast (A)">Auto C/B</button>
-      <label class="tool slim" title="Display contrast">C <input type="range" id="dispC" min="0" max="100" value="50"></label>
-      <label class="tool slim" title="Display brightness">B <input type="range" id="dispB" min="0" max="100" value="50"></label>
     </div>
 
     <div class="viewport" id="viewport">
@@ -87,6 +84,20 @@
         </div>
       </div>
       <div class="hint" id="hint">Wheel: focus · Ctrl+wheel: magnification · Alt / Shift+wheel: stigmator X / Y · Double-click: centre</div>
+    </div>
+
+    <div class="detbar">
+      <div class="histwrap" title="Detector signal histogram (full 16-bit range). Drag the lines: left = black, right = white. Drag between them to move both.">
+        <canvas id="hist"></canvas>
+      </div>
+      <div class="det">
+        <label for="inPmt">PMT voltage <small>(brightness)</small></label>
+        <div class="detrow"><input type="range" id="slPmt" min="0" max="4095" step="1"><div class="num"><input id="inPmt" type="number" min="0" max="4095" step="1"></div></div>
+      </div>
+      <div class="det">
+        <label for="inColl">Collector</label>
+        <div class="num"><input id="inColl" type="number" min="-400" max="400" step="10"><span class="unit">V</span></div>
+      </div>
     </div>
 
     <div class="databar" id="databar">
@@ -145,7 +156,6 @@
         <summary>Gun</summary>
         <div class="field inline"><label for="inEmis">Emission</label><div class="num"><input id="inEmis" type="number" min="0" max="400" step="5"><span class="unit">µA</span></div></div>
         <div class="field inline"><label for="inFil">Filament</label><div class="num"><input id="inFil" type="number" min="1000" max="2800" step="1"><span class="unit">mA</span></div><span class="muted" id="filNow"></span></div>
-        <div class="field inline"><label for="inColl">Collector</label><div class="num"><input id="inColl" type="number" min="-400" max="400" step="10"><span class="unit">V</span></div></div>
       </details>
     </section>
 
@@ -159,7 +169,6 @@
       <div class="slider"><label>Focus</label><input type="range" id="slFocus" min="0" max="4095" step="1"><output id="oFocus"></output></div>
       <div class="slider"><label>Stig X</label><input type="range" id="slStigX" min="0" max="4095" step="1"><output id="oStigX"></output></div>
       <div class="slider"><label>Stig Y</label><input type="range" id="slStigY" min="0" max="4095" step="1"><output id="oStigY"></output></div>
-      <div class="slider"><label>Brightness</label><input type="range" id="slBright" min="0" max="4095" step="1"><output id="oBright"></output></div>
       <div class="row2">
         <button id="btnWobble" class="toggle">Focus wobble</button>
         <button id="btnStigReset" class="ghost">Centre stigmators</button>
