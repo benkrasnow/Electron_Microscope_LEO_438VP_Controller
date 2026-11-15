@@ -161,3 +161,24 @@ At the standard state, switch to VP by your normal procedure (the old system han
 - Fit the displayed-WD transform (block A).
 - Run the emulator on every step and fix the remaining C1 mismatch: mode mapping (block C), aperture scaling (D), history (G).
 - Write the result back into the spec and into the control-box firmware as either the emulated LEO-32 law or a measured lookup table, whichever reproduces the captures better.
+
+## 7. Session log, 2026-11-15
+
+All blocks ran in Normal / Depth / Auto resolution at 50 µm unless noted. The per-step table (settings + final lens DACs + currents, 140 rows) is `analysis/optics/eo_capture_2026-11-15.csv`, built by `analysis/optics/eo_capture_table.py` from the `scope_captures/opt_*` shots.
+
+| Block | Shots | Done |
+|---|---|---|
+| Pilot `opt_P` | 6 | Beam off: lenses are recomputed from the **EHT readback** (0 V → clamped to 100 V), not the setpoint, so beam-off data is a 100 V state; beam on needed. A kV setpoint change with the beam off sends nothing. |
+| `opt_A20` | 14 | WD 5–100 mm at 20 kV, 200 pA |
+| `opt_B20` | 34 | Probe 10 pA–100 nA (Normal, Depth), Auto resolution (WD, aperture), aperture 30 / 50 µm in Normal and Depth |
+| `opt_E`, `opt_E2` | 32 + 48 | kV 30 → 1 → 30 with a WD "nudge" (20.0 ↔ 20.1 mm) after the readback settled; Auto resolution at 10 / 5 / 2 kV; magnification 50×–100 000×; 5 kV probe, WD and Depth sweeps |
+| `opt_EL` | 2 | 3 kV reference only |
+
+Observations made during the session:
+- Displayed WD: internal (GSP) WD = (WD − 1.9 mm) / 1.19 reproduces the objective within 2–8 coarse counts from 5 to 100 mm (20 kV), and at 100 V.
+- The first lens update after a kV change is within 3 counts of the settled (nudged) value; no kV hysteresis; returning to a state reproduces it within a few counts (no visible history effect).
+- Auto resolution sets the probe current itself (150 / 90 / 70 / 50 pA at 20 / 10 / 5 / 2 kV, independent of WD and aperture), then computes the lenses as Normal mode does at that current.
+- Depth mode pins C2 near a ceiling (coarse ≈ 2260 at 20 kV, ≈ 1115 at 5 kV, about 0.853× the emulator's limit) and moves only C1; Normal mode lands on the Depth solution at low current or short WD.
+- Magnification sends no lens writes (scan-coil weights and range relay only).
+- The aperture entry has a large effect on the condensers (20 kV, 200 pA: C1 1011 → 1944 coarse for 50 → 30 µm).
+- Skipped: VP (LEO-32 does not know about VP when it is switched from hpapp32, so its lens settings in VP were the high-vacuum ones) and the low-kV spacer (the UI only allows selecting it with the beam off).
