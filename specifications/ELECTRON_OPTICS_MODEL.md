@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Subject | How accelerating voltage (kV), working distance (WD), probe current and focus determine the lens currents; the column model LEO-32 uses (Optibeam) |
-| Source | Decompilation of the GSP module `TIGA/g200.440`. Source files `gcondens`, `gfocus`, `geht`, `goptctrl` and `gcolmod`. The machine data file `C:\LEO\Data.vac` and the factory calibration `LEO-32\435vpcal\LEO 438V.clb` |
+| Source | Decompilation of the GSP module `TIGA/g200.440`. Source files `gcondens`, `gfocus`, `geht`, `goptctrl`, `gcolmod`, `gscncoil` and `gscnxfrm`. The machine data file `C:\LEO\Data.vac`, decoded with the field table of LEO's own `view.exe`. The factory calibration `LEO-32\435vpcal\LEO 438V.clb` |
 | Revision | 0.2, 2026-11-15 (0.1 same day) |
 | Tools | `analysis/fdec.py` (symbolic decompiler for the TI 340x0 C compiler's software floating point); raw outputs in `analysis/optics/` |
 
