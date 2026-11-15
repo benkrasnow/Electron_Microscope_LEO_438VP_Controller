@@ -4,7 +4,7 @@
 |---|---|
 | Subject | How accelerating voltage (kV), working distance (WD), probe current and focus determine the lens currents; the column model LEO-32 uses (Optibeam) |
 | Source | Decompilation of the GSP module `TIGA/g200.440`. Source files `gcondens`, `gfocus`, `geht`, `goptctrl`, `gcolmod`, `gscncoil` and `gscnxfrm`. The machine data file `C:\LEO\Data.vac`, decoded with the field table of LEO's own `view.exe`. The factory calibration `LEO-32\435vpcal\LEO 438V.clb` |
-| Revision | 0.4, 2026-11-15 (0.1–0.3 same day): adds the GSP emulator (§6.5) |
+| Revision | 0.5, 2026-11-15 (0.1–0.4 same day): GSP emulator (§6.5), condition table and saved LEO-32 operating points (§6.6) |
 | Tools | `analysis/fdec.py` (symbolic decompiler for the TI 340x0 C compiler's software floating point); `analysis/gspemu.py` + `analysis/optics/emu_driver.py` (TMS34020 emulator that runs LEO-32's own column code); raw outputs in `analysis/optics/` |
 
 Markers: **[D]** decoded from the code with constants; **[C]** cross-checked against scope captures; **[I]** inferred, needs confirmation.
@@ -255,6 +255,55 @@ M3/M4 captures with the LEO-32 Optibeam screen recorded (M8) would settle it. Un
 - The control box uses the captured table for C1/C2 (`eo.pc*`).
 - The emulator is the reference for the objective and for kV/WD scaling.
 
+### 6.6 PC start-up state, condition table and saved operating points **[D][C]**
+
+**How the PC talks to the GSP.**
+- Every `_cp_*` entry (144 of them) only queues a message (`_PutQueue`, message ID plus arguments). The EO process later runs the matching `_gsp_*` routine.
+- The emulator calls the `_gsp_*` routines directly, so nothing is lost.
+- `_set_column_profile` (message 143) is an empty stub. `_initialise_lens_data` (0x2f0a0) and `_initialise_focus_lens_data` (0x3e010) take no arguments: they rebuild the lens records from the DAC words.
+
+**Condition table** (`_gsp_import_condition_table`, message 113). It is a bilinear table over probe current (pA, 7 points at 0x175300) × kV (6 points at 0x1753e0), with 5 layers (0x1754a0, 35 floats per layer).
+- Layer 0 is a correction of the probe current (`sub_4ac10`): the current used by the optics, `_coarse_lens_dac+1288`, becomes `layer0(I, kV)·1e-12` instead of the requested I.
+- Layers 1–4 feed `_compensate_stig_setting`.
+- The table is empty in `.cinit`. In that case the requested current is used unchanged, which the emulator confirms.
+- No table file was found on the old PC's disk (Data.vac, user state files, `LEO\*.dat`). So, as far as can be told, LEO-32 ran with the identity table.
+
+**Probe table** (`_gsp_import_probe_table`): 25 floats at 0x174fa0. Mode 0 never reads it while setting a probe current (§6.5).
+
+**Saved operating points.** LEO-32's conditions files (`user\*\*.MLC`, macro text such as `AP_C1%7.717073e-001`) record, for each saved state:
+- kV, the displayed WD, the probe current, the aperture index and the Optibeam mode;
+- the C1/C2/C3 currents.
+
+The currents are what `_gsp_get_C1C2_setting` / `_gsp_get_C3_setting` return: the DAC words read back from the EO board and converted with the same 3 A / 20-bit law. They are therefore the commanded currents. The emulator's readback path reproduces its own commanded currents to 1e-5.
+
+`analysis/optics/mlc_compare.py` extracts the 11 points that have Optibeam mode 0, an aperture-strip aperture and real currents (2007–2009 and Ben's own `Feb1` / `Working`) into `mlc_points.csv`, and runs the emulator on each:
+
+| File | kV | pA | ap | WD shown | GSP WD for saved C3 | Saved C1 / C2 / C3 (A) | Emulator at GSP WD: C1 / C2 |
+|---|---|---|---|---|---|---|---|
+| Feb1 | 6 | 200 | 0 | 32.7 | 25.5 | 0.896 / 0.190 / 0.359 | 1.050 / 0.228 |
+| Working | 11.38 | 50 | 0 | 11.1 | 7.6 | 1.238 / 0.323 / 0.727 | 1.451 / 0.375 |
+| 05-06-09 particles | 15 | 400 | 0 | 19.4 | 14.6 | 1.177 / 0.319 / 0.695 | 1.416 / 0.374 |
+| WPseal20mm | 15 | 600 | 1 | 19.8 | 14.9 | 0.761 / 0.432 / 0.688 | 1.012 / 0.450 |
+| 8-5penny18mm | 20 | 1000 | 1 | 18.1 | 13.4 | 0.904 / 0.457 / 0.824 | 0.992 / 0.534 |
+| Aug 12 2008 | 20 | 2000 | 1 | 18.5 | 13.8 | 0.722 / 0.480 / 0.818 | 0.908 / 0.519 |
+| 9-4 18 Z | 20 | 1000 | 1 | 19.1 | 14.3 | 0.762 / 0.510 / 0.808 | 0.999 / 0.532 |
+| 10-15-2008 | 20 | 400 | 1 | 19.2 | 14.5 | 0.772 / 0.586 / 0.805 | 1.123 / 0.557 |
+| Microsample 9-11-08 | 20 | 1000 | 1 | 20.7 | 15.7 | 0.756 / 0.512 / 0.785 | 1.010 / 0.529 |
+| 200X25Z41WD | 20 | 200 | 1 | 41.5 | 32.7 | 0.983 / 0.552 / 0.609 | 1.435 / 0.538 |
+| 25X80mm plg | 20 | 200 | 1 | 80.3 | 64.2 | 0.976 / 0.555 / 0.482 | 1.701 / 0.500 |
+
+Findings:
+1. **Displayed WD ≠ GSP WD.**
+   - At the displayed WD the emulated objective current is 9.5 % below the saved C3 at every kV (7.5 % at 80 mm). This persists with the saved C1/C2 forced in, and every Data.vac copy has the same C3 cal/rem.
+   - Expressed as WD: displayed WD ≈ 1.19 × GSP WD + 1.9 mm (rms 0.6 mm).
+   - The GSP's forward (WD → current) and inverse (current → WD) agree with each other, so the transformation is on the PC side (leom/leoserv), not in `g200.440`.
+   - Consequence: the 5 kV DAC captures (objective 380–383, emulator WD 36.6 mm) were taken at a **displayed** WD of about 45 mm.
+2. **C2 is close.** Within −0.06 … +0.05 A once the objective state is matched. C2 also carries most of the current dependence at 20 kV (0.586 → 0.480 A from 400 to 2000 pA).
+3. **C1 is too high in every case** (by 0.09 … 0.7 A, worst at long WD). The emulator's C1 also varies more with current than LEO-32's.
+4. **C1 also depends on state that isn't saved.** `8-5penny18mm` and `9-4 18 Z` have the same kV, current, aperture and nearly the same WD, but C1 is 0.904 vs 0.762 A (C2 0.457 vs 0.510). No saved field (gun, filament, anode, aperture, Optibeam mode) differs between them.
+   - The gun-related GSP setters (`_gsp_set_emission_amp`, `_gsp_set_first/second_peak`) only feed emission control and auto-saturation, not the source data.
+   - The remaining candidates are PC-side: a runtime condition table, or hysteresis / manual condenser changes before saving.
+
 ## 7. `Data.vac`: LEO-32 non-volatile machine data **[D]**
 
 The field layout comes from LEO's own viewer, **`view.exe` ("LEO DATA.VAC File Viewer", 1997)**. Each label in it is preceded by the load of its field. `analysis/datavac.py` extracts the table and decodes any `Data.vac`; the full listing for this machine is `analysis/optics/datavac_decoded.txt`. It's a 1567-byte packed file:
@@ -324,7 +373,11 @@ The firmware currently uses a 4-point probe-current table at 5 kV (`eo.pc*`). Wi
 - The condition-layer correction tables (`_interpolate_condition_layer`, imported from the PC with `_gsp_import_condition_table` / `_gsp_import_probe_table`) and where the PC keeps them (user state files `*.MLC`, `current.mll` contain Optibeam data).
 - The exact length L in the scan deflection formula, and the reference angle subtracted from θ_C3 (`_calc_E3_dependents`).
 - The constants for the probe-size display terms beyond §6.2.
-- The emulator (§6.5) reproduces the objective and C2 but not C1 at 5 kV. Find the PC-side Optibeam state (aperture, start-up calls) that makes C1 match, then use the emulator to check the control box setting by setting.
+- The emulator (§6.5, §6.6) reproduces the objective (given the GSP WD) and roughly C2, but not C1. All GSP-side start-up inputs are now accounted for, so the remaining gaps are on the PC side:
+  - the displayed-WD ↔ GSP-WD transformation (≈ 1.19·WD + 1.9 mm);
+  - what drives C1, including whether the PC loads a condition table at run time.
+
+  Both need either x86 decompilation of `leom.exe` / `m200.dll` (where `AP_WD` and `IMPORTCONDITIONTABLE` are handled) or measurements M2 and M8.
 
 ## 11. Measurements that would settle the model
 
@@ -351,5 +404,6 @@ python fdec.py "<drive>/TIGA/g200.440" _calc_excitation_for_WD _gsp_optibeam_sta
 python datavac.py "<drive>/Program Files/LEO Electron Microscopy Ltd/LEO-32/view.exe" "<drive>/LEO/Data.vac"
 python optics/column_model.py
 python optics/emu_driver.py          # runs LEO-32's GSP code, compares with the 5 kV captures
+python optics/mlc_compare.py "<drive>/Program Files/LEO Electron Microscopy Ltd/LEO-32/user" --csv optics/mlc_points.csv
 ```
 GSP doubles are stored with their two 32-bit words swapped. `.cinit` holds the compiled lens records, calibration defaults, gun table and aperture table.
