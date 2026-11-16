@@ -15,7 +15,7 @@ let obiState = { bridge: false, obi: false, demo: false };
 
 // ---------------------------------------------------------------- preferences (this browser)
 const PREF_DEFAULTS = { res: "512x512", speed: "500", photo: "2048x1536", photoDwell: "4000", histLo: 0, histHi: 1,
-  dwellUnit: 125, bits: 8, hfw1: 110, focusStepMm: 0.5, wobPct: 50, stigStep: 8, ctrX: 1, ctrY: 1, extCtrl: false, demo: false, scanExt: true, jog: "0.1" };
+  dwellUnit: 125, bits: 8, hfw1: 110, focusStepMm: 0.5, fineFocusMm: 0.005, wobPct: 50, stigStep: 8, ctrX: 1, ctrY: 1, extCtrl: false, demo: false, scanExt: true, jog: "0.1" };
 const prefs = Object.assign({}, PREF_DEFAULTS, (() => { try { return JSON.parse(localStorage.getItem("leo.prefs") || "{}"); } catch { return {}; } })());
 const savePrefs = () => { try { localStorage.setItem("leo.prefs", JSON.stringify(prefs)); } catch {} };
 
@@ -180,7 +180,7 @@ function render() {
   // Image card
   stateClass($("eoState"), eo.link ? "ok" : "warn", eo.link ? `${eo.mode} scan` : "EO link ?");
   setVal($("inMag"), Math.round(eo.mag)); setVal($("slMag"), magToSlider(eo.mag));
-  setVal($("slFocus"), eo.wd); setVal($("inFocus"), eo.wd, 2);
+  setVal($("slFocus"), eo.wd); setVal($("inFocus"), eo.wd, 3);
   if (performance.now() - (editing.get($("xyStig")) || 0) > 2500) showStig(eo.stigx, eo.stigy);
   setVal($("slPmt"), eht.pm1); setVal($("inPmt"), eht.pm1);
   if (performance.now() - (editing.get($("btnWobble")) || 0) > 2500) showWobble(eo.wob > 0);
@@ -305,7 +305,7 @@ function sliderTo(id, out, fn) {
 // Focus: the control is the working distance (the box sets the objective for it, as LEO-32 did).
 function setFocusWd(wd, fromEl) {
   wd = Math.min(100, Math.max(2, +wd));            // 438VP: up to 100 mm (LEO-32 accepted 100 on 2026-11-15)
-  for (const el of [$("slFocus"), $("inFocus")]) { touch(el); if (el !== fromEl) el.value = el === $("inFocus") ? wd.toFixed(2) : wd; }
+  for (const el of [$("slFocus"), $("inFocus")]) { touch(el); if (el !== fromEl) el.value = el === $("inFocus") ? wd.toFixed(3) : wd; }
   if (st) { st.eo.wd = +wd.toFixed(3); updateDatabar(); }
   sendLatest("wd", `wd ${wd.toFixed(3)}`);
 }
@@ -341,11 +341,13 @@ function makeJog(id, start, apply) {
   track.addEventListener("pointerup", release);
   track.addEventListener("pointercancel", release);
 }
-// Focus: one pixel = a quarter of a wheel notch (finer at higher magnification).
-makeJog("jogFocus", () => (st ? +st.eo.wd : +$("inFocus").value || 20), (wd0, dx) => {
-  const notch = Math.max(0.001, +prefs.focusStepMm * 100 / Math.max(st ? st.eo.mag : 100, 1));
-  setFocusWd(wd0 + dx * 0.25 * notch);
-});
+// Fine focus: prefs.fineFocusMm of WD per pixel at 100x and below, finer above (÷ mag/100); the gain is fixed
+// when the handle is grabbed.
+let fineFocusPerPx = 0;
+makeJog("jogFocus", () => {
+  fineFocusPerPx = Math.max(1e-6, +prefs.fineFocusMm * Math.min(1, 100 / Math.max(st ? st.eo.mag : 100, 1)));
+  return st ? +st.eo.wd : +$("inFocus").value || 20;
+}, (wd0, dx) => setFocusWd(wd0 + dx * fineFocusPerPx));
 
 // Magnification: logarithmic slider over 10x..500000x, number box, fine jog (0.4 % per pixel).
 const MAG = [10, 500000];
@@ -811,7 +813,7 @@ const bindPref = (id, key, num = true, ev = "change") => {
     updateDatabar();
   });
 };
-bindPref("pDwellUnit", "dwellUnit"); bindPref("pBits", "bits"); bindPref("pHfw1", "hfw1"); bindPref("pFocusStep", "focusStepMm");
+bindPref("pDwellUnit", "dwellUnit"); bindPref("pBits", "bits"); bindPref("pHfw1", "hfw1"); bindPref("pFocusStep", "focusStepMm"); bindPref("pFineFocus", "fineFocusMm");
 bindPref("pStigStep", "stigStep"); bindPref("pCtrX", "ctrX"); bindPref("pCtrY", "ctrY"); bindPref("pExtCtrl", "extCtrl");
 bindPref("pScanExt", "scanExt"); bindPref("pDemo", "demo");
 $("pDemo").addEventListener("change", () => worker.postMessage({ type: "demo", on: prefs.demo }));
