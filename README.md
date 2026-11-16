@@ -1,6 +1,8 @@
 # LEO 438VP control replacement: working files
 
-Everything generated while reverse-engineering the LEO 438VP SEM's control system: the Win98 PC running LEO-32 plus the custom ISA image-processor board. The untouched drive image stays in `C:\Users\Ben\Desktop\LEO 438VP - claude`; the analysis tools read the original binaries from there.
+Everything generated while reverse-engineering the LEO 438VP SEM's control system: the Win98 PC running LEO-32 plus the custom ISA image-processor board. The analysis tools read the original binaries from an image of the old PC's drive, which is not part of this repository.
+
+Published at https://github.com/benkrasnow/Electron_Microscope_LEO_438VP_Controller. The capture data and the decompiled / disassembled text from the proprietary LEO-32 binaries are kept locally only (see `.gitignore`), so some files mentioned in the docs are not in the repository.
 
 ## Layout
 
@@ -12,12 +14,13 @@ Everything generated while reverse-engineering the LEO 438VP SEM's control syste
 | **`webui/`** | **Operator web page (Chrome / Edge): control box over Web Serial, OBI imaging through `bridge.py`, developer tools. See `webui/README.md`** |
 | `design/` | Design notes, e.g. the Glasgow pin plan |
 | `scope_tools/` | Tektronix MSO24 control and scan-fiber decoding scripts (`arm_burst.py`, `wait_grab_decode.sh`, `decode_scan_fiber.py`, …) and `SCAN_FIBER_NOTES.md` (working notes and test log) |
-| `scope_captures/` | Scope captures (`.npz` waveforms, `.png` screens, `_ch3.txt` decodes) and the annotated `scan_fiber_timing.png` |
+| `scope_captures/` | The annotated `scan_fiber_timing.png`. The scope captures themselves (`.npz` waveforms, `.png` screens, `_ch3.txt` decodes) are local only |
 | `capture_tools/` | Live serial capture: Teensy 3.2 logger firmware, `capture_serial.py`, `decode_serial_log.py`, the protocol write-ups, and every capture. See `capture_tools/README.md`. |
-| `capture_tools/captures/` | Raw logs (`<date>_<time>_<tag>.log`), operator notes, decoded timelines and CSVs. |
+| `capture_tools/captures/` | Raw logs (`<date>_<time>_<tag>.log`), operator notes, decoded timelines and CSVs (local only). |
 | `capture_tools/teensy_blink_test/` | Blink sketch used to check the Teensy toolchain. |
 | `report/` | The static-analysis report (`leo438vp_report.html`, also published as a claude.ai artifact) plus the section drafts and diagrams it was built from. |
 | `analysis/` | Python tools for the original binaries, and their outputs (see below). |
+| `notes/` | `PERFORMANCE_TESTS.md` (improvements to try after bring-up), `OLD_SYSTEM_TESTS.md` (checks to run on the old LEO-32 PC) |
 | `notes/memory/` | Copy of Claude's project memory (decisions and requirements from the user). |
 
 ## Protocol and requirements documents
@@ -40,8 +43,9 @@ Run them with the original files as arguments, for example `python t34.py "<orig
 | `ne.py`, `nedis.py`, `mzio.py` | 16-bit NE / MZ executable parsing and disassembly |
 | `peinfo.py`, `xref32.py`, `strs.py` | PE32 inspection, string cross-references, string extraction |
 | `argtrace.py`, `calls.py`, `cinit.py`, `ext.py`, `movi.py`, `rec.py`, `scanio.py`, `g900map.py` | Call/argument tracing, TIGA extension tables, scan I/O and EO register mapping |
-| `syms/` | Symbol dumps of every GSP module |
-| `*_tables.txt`, `*_exports.txt`, `eo_calls.txt` | Extracted TIGA extension tables, exports and EO register call lists |
+| `syms/` | Symbol dumps of every GSP module (local only) |
+| `*_tables.txt`, `*_exports.txt`, `eo_calls.txt` | Extracted TIGA extension tables, exports and EO register call lists (local only) |
+| `optics/` | Electron-optics model (`optics_model.py`), fits to the 2026-11-15 captures, emulator driver, Teensy check (`check_teensy.py`). The decompiled `g200.440` listings it was built from are local only |
 | `patch8.py`, `patch9.py` | One-off report-editing scripts (historical) |
 
 ## Status (2026-11-13)
@@ -60,6 +64,6 @@ Run them with the original files as arguments, for example `python t34.py "<orig
 
 ## Version history (git)
 
-This folder is a local git repository (no remote; nothing is uploaded anywhere). Claude commits after each meaningful change so any earlier version can be restored. Raw scope waveforms (`scope_captures/*.npz`, 6.8 GB) are excluded via `.gitignore`; their decoded `_ch3.txt`, screenshots and logs are tracked. Line-ending conversion is off (`core.autocrlf false`) so KiCad files are stored byte-for-byte.
+This folder is a git repository with the GitHub remote `origin` (see above). Claude commits after each meaningful change so any earlier version can be restored. History was rewritten on 2026-11-15 to drop capture data and decompiled LEO-32 text before publishing; a bundle of the earlier history is in `../Complete_438VP_control_backup_2026-11-15.bundle` (outside the repository). Line-ending conversion is off (`core.autocrlf false`) so KiCad files are stored byte-for-byte.
 
 Useful commands if you ever want them: `git log --oneline` (list versions), `git show <id> --stat` (what changed), `git checkout <id> -- <file>` (restore one file from an earlier version).

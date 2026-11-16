@@ -1,6 +1,7 @@
 - [Project folder layout](project-folder-layout.md) — new work in Complete_438VP_control, originals untouched in "LEO 438VP - claude"
 - [Filament off for pressure changes](filament-off-for-pressure-changes.md) — replacement controller must cool filament before any VP/HV/vent transition
 - [Scan fiber status](scan-fiber-status.md) — EO link decoded (spec rev 1.1 + system datasheet, 2026-11-13); next: replacement IP board design
-- [Replacement plan](replacement-plan-obi-glasgow.md) — OBI/Glasgow for imaging + separate MCU control box enforcing safety; HFBR fibers; no OBI Python UI
-- [Git version history](git-version-history.md) — project folder is a local git repo; commit after changes, never push
-- [Digi-Key search: sort by stock](digikey-search-sort-by-stock.md) — sort by quantity available desc; in stock, not Marketplace, small qty
+- [Electron optics model](electron-optics-model.md) — kV/WD/probe/focus physics decoded from g200.440; Data.vac holds lens calibration
+- [Performance tests after bring-up](performance-tests-after-bringup.md) — list in notes/PERFORMANCE_TESTS.md; item 1 = eo.gun 1 tungsten table
+- [GitHub publishing](github-publishing.md) — public repo benkrasnow/Electron_Microscope_LEO_438VP_Controller; captures + decompiled LEO-32 text stay local
+- [Old-system tests](old-system-tests.md) — notes/OLD_SYSTEM_TESTS.md: hpapp32 title, VP Status, start-order checks
