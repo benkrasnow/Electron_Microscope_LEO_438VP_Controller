@@ -25,3 +25,22 @@ hardware/leo_control_box/leo_control_box.net
 *-backups/
 fp-info-cache
 hardware/leo_control_box/logs/
+
+# Not published (kept locally only)
+# - all scope and serial capture data except the figure the scan spec cites
+scope_captures/*
+!scope_captures/scan_fiber_timing.png
+capture_tools/captures/
+# - decompiled / disassembled text from the proprietary LEO-32 binaries
+analysis/syms/
+analysis/optics/g200_optics_dec.txt
+analysis/optics/part[0-9].txt
+analysis/optics/scan[0-9].txt
+analysis/optics/obeam_modes.txt
+analysis/optics/obeam_solve.txt
+analysis/optics/view_fields.txt
+analysis/eo_calls.txt
+analysis/ext_html.txt
+analysis/tigaext_tables.txt
+analysis/tigasem_exports.txt
+analysis/*.pkl
