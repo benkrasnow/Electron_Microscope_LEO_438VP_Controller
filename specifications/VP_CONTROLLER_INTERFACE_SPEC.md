@@ -4,7 +4,7 @@
 |---|---|
 | Subsystem | VP control board ("Orsay" / "Interface HP"): chamber isolation valve, VP rotary-pumping valve, proportional gas-admit valve, chamber Pirani gauge, chamber pressure regulation |
 | Host in the original system | Win98 PC, COM2, program `hpapp.exe` ("hpapp32", 1998), settings in `C:\WINDOWS\LEO.INI` section `[HPAPP]` |
-| Revision | 1.2, 2026-11-15: why LEO-32's "Go To VP" button is disabled (§7.1); lens note in §7 (1.0 2026-11-12) |
+| Revision | 1.3, 2026-11-15: who starts hpapp32, the two hpapp links (§7.1); 1.2: why LEO-32's "Go To VP" button is disabled (§7.1); lens note in §7 (1.0 2026-11-12) |
 | Basis | Live captures of both directions on COM2, plus disassembly of `hpapp.exe` |
 
 Confidence markers used below: **[C]** confirmed by capture, **[F]** taken from the original software but not seen on the wire, **[I]** inferred and needing verification.
@@ -251,9 +251,14 @@ From `leoserv.exe`, `m600.dll` (vacuum DLL) and `m007.dll`, static analysis only
    - **2** in the HP states I, K, M, N, O;
    - **0** otherwise, including **A Initialise** (nothing heard from hpapp) and the error states **X, Y, Z**.
 3. **Errors.** If hpapp does not answer within `OrsayBoardTimeout` (LEO.INI `[HPAPP]`, clamped to 10–300 s; 300 here), `m600.dll` reports a timeout and sets `DP_HP_STATUS` (0x108) to 13. Other paths report "HPAPP start error. SEM set to LP mode only.", "HPAPP has closed …" and "HPAPP hung up …".
-4. **History** (`LOG\*.leo`): VP errors from 2003 to 4 Jan 2025 (550 HPApp failed to start ×12, 552 closed unexpectedly ×8, 553 hung up ×6, 554 VP Control spurious reset ×45, 555 comms error ×11, 556 / 557 turbo isolation valve ×12, 570 unknown ×24). There are none after 4 Jan 2025.
+4. **Who starts hpapp32.** Only `leoserv.exe`. At start-up it reads the machine type through `Srv32.dll` (`SRV_Get_Machine_Type`) and, for 4 or 10, calls `CreateProcessA` on `<LEO-32 folder>\HPAPP.EXE` (code at 0x49fae8 → 0x530260). It doesn't wait for hpapp32 to come up (no `WaitForInputIdle`). On failure it posts "*** HPAPP failed to start". Windows doesn't start it: there are no Startup-folder, `Run=` / `Load=` or registry Run entries for it. `m600.dll` doesn't launch it either; it only checks `GetModuleHandle("HPAPP.EXE")` and reports "HPAPP start error. SEM set to LP mode only." if hpapp32 isn't loaded.
+5. **Two separate links.**
+   - *hpapp32 → LEO-32*: hpapp32 finds LEO-32's server window by `FindWindow("LEO SRV-32")` and polls the VP board on COM2. It reads LEO parameters (`AP_CHAMBER_PRESSURE`, `AP_SYSTEM_VAC`, `DP_VACSTATUS`, `DP_DETECTOR_TYPE`), writes `AP_HP_TARGET`, `AP_COLLECTOR_BIAS`, `AP_BRIGHTNESS`, `AP_CONTRAST`, and runs `CMD_GOTO_VP` / `CMD_GOTO_HV`. The chamber pressure reaches LEO-32's display through this path; `m600.dll` exports `HP_SET_CHAMBER_PRESSURE` and `HP_STATE_EVENT` for it.
+   - *m600.dll → hpapp32*: `m600.dll` calls `FindWindow("Untitled - hpapp32")` **once**, at initialisation (its only `FindWindow` call), and stores the handle. Its send routine silently does nothing if the handle is 0.
+   - A working pressure display therefore doesn't show that the m600 link is up. If hpapp32's window didn't exist yet, or had another title, when `m600.dll` initialised, LEO-32 never talks to hpapp32 for the rest of the session, and its VP state stays A, which disables "Go To VP". Since `leoserv.exe` doesn't wait after `CreateProcessA`, this is a start-up race. Inference from static analysis.
+6. **History** (`LOG\*.leo`): VP errors from 2003 to 4 Jan 2025 (550 HPApp failed to start ×12, 552 closed unexpectedly ×8, 553 hung up ×6, 554 VP Control spurious reset ×45, 555 comms error ×11, 556 / 557 turbo isolation valve ×12, 570 unknown ×24). There are none after 4 Jan 2025.
 
-So the button is grey whenever LEO-32's own VP state is not B / E / F. The most likely causes: LEO-32 never linked to hpapp32 (state A), for example because hpapp32 was started by hand, closed and restarted, or has a different window title; or it latched an error state (X / Y / Z). LEO-32's VP Control panel shows the state name under "Status"; that text identifies which. A fresh start, with LEO-32 launching hpapp32 itself and the chamber pumped (state F), should enable the button. Unconfirmed on the running system.
+So the button is grey whenever LEO-32's own VP state is not B / E / F. The most likely causes: LEO-32 never linked to hpapp32 (state A), because hpapp32's window wasn't up yet or didn't have the title "Untitled - hpapp32" when `m600.dll` looked for it (item 5); or it latched an error state (X / Y / Z). LEO-32's VP Control panel shows the state name under "Status"; that text identifies which. A fresh start, with LEO-32 launching hpapp32 itself and the chamber pumped (state F), should enable the button. Unconfirmed on the running system.
 
 ## 8. Open items
 
