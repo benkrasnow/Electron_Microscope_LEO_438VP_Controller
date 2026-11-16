@@ -4,7 +4,7 @@
 |---|---|
 | Subsystem | VP control board ("Orsay" / "Interface HP"): chamber isolation valve, VP rotary-pumping valve, proportional gas-admit valve, chamber Pirani gauge, chamber pressure regulation |
 | Host in the original system | Win98 PC, COM2, program `hpapp.exe` ("hpapp32", 1998), settings in `C:\WINDOWS\LEO.INI` section `[HPAPP]` |
-| Revision | 1.1, 2026-11-15: lens note in §7 (1.0 2026-11-12) |
+| Revision | 1.2, 2026-11-15: why LEO-32's "Go To VP" button is disabled (§7.1); lens note in §7 (1.0 2026-11-12) |
 | Basis | Live captures of both directions on COM2, plus disassembly of `hpapp.exe` |
 
 Confidence markers used below: **[C]** confirmed by capture, **[F]** taken from the original software but not seen on the wire, **[I]** inferred and needing verification.
@@ -242,6 +242,18 @@ Beam off and filament cooled. Send new `MC` and `HP`. The state goes 9 → 8 →
 5. Keep the LP/HP states consistent with the stage/vacuum controller: `TO 2` at air, `TO 3` when pumped.
 
 - **Lenses in VP.** On this machine VP is switched from hpapp32 and LEO-32's own VP button is disabled, so LEO-32's column model never knew the chamber was in VP. Its VP lens routine (`_set_lenses_for_HPSEM` in `g200.440`) was never used, and the high-vacuum lens settings applied in VP too. The control box does the same (`ELECTRON_OPTICS_MODEL.md` §6.7).
+
+### 7.1 How LEO-32 enables "Go To VP" **[F]**
+From `leoserv.exe`, `m600.dll` (vacuum DLL) and `m007.dll`, static analysis only:
+1. **Configuration.** `leoserv.exe` starts `\HPAPP.EXE` from the LEO-32 folder only if the machine type is 4 (LEO 435VP) or 10 (LEO 438); otherwise it never starts it. `m600.dll` connects to hpapp only if `DP_COLUMN_TYPE` (state 0x8c) = 3 (LEO 435VP/438VP). It finds hpapp32's window by the title "Untitled - hpapp32" (`FindWindow`) and registers `LEO_HPAPP_MESSAGE`. `Data.vac` has machine type 10 (MASTER byte, file offset 0x507) and column type 3 (EO byte, file offset 0x0ed) in the current file and in every copy and backup on the disk, so the configuration is correct.
+2. **State machine.** `m600.dll` keeps its own VP state, A–Z, A1, A2 (A Initialise, B At Air LP … F Vac Ready LP, I–O HP states, X / Y LP error, Z HP error), driven by the messages from hpapp32. From that state it sets `DP_VP_OK` (state 0x141):
+   - **1** ("Go To VP" allowed) in **B At Air LP**, **E Pumping LP** (unless `DP_VACSTATUS` is 4 or 5) and **F Vac Ready LP**;
+   - **2** in the HP states I, K, M, N, O;
+   - **0** otherwise, including **A Initialise** (nothing heard from hpapp) and the error states **X, Y, Z**.
+3. **Errors.** If hpapp does not answer within `OrsayBoardTimeout` (LEO.INI `[HPAPP]`, clamped to 10–300 s; 300 here), `m600.dll` reports a timeout and sets `DP_HP_STATUS` (0x108) to 13. Other paths report "HPAPP start error. SEM set to LP mode only.", "HPAPP has closed …" and "HPAPP hung up …".
+4. **History** (`LOG\*.leo`): VP errors from 2003 to 4 Jan 2025 (550 HPApp failed to start ×12, 552 closed unexpectedly ×8, 553 hung up ×6, 554 VP Control spurious reset ×45, 555 comms error ×11, 556 / 557 turbo isolation valve ×12, 570 unknown ×24). There are none after 4 Jan 2025.
+
+So the button is grey whenever LEO-32's own VP state is not B / E / F. The most likely causes: LEO-32 never linked to hpapp32 (state A), for example because hpapp32 was started by hand, closed and restarted, or has a different window title; or it latched an error state (X / Y / Z). LEO-32's VP Control panel shows the state name under "Status"; that text identifies which. A fresh start, with LEO-32 launching hpapp32 itself and the chamber pumped (state F), should enable the button. Unconfirmed on the running system.
 
 ## 8. Open items
 
