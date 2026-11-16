@@ -71,6 +71,8 @@ void Eht::cmdE(float kv) {
 void Eht::cmdF(int mA) {
   char b[12]; snprintf(b, sizeof b, ".F%03X", clamp12(mA - 16)); cmd(b); filCur_ = mA;
 }
+float Eht::kvOut() const { return wordSent_ >= 0 && (wordSent_ & si(EHT_O_EHT)) ? kvCur_ : 0.0f; }
+
 void Eht::cmdB(float uA) {
   int c = clamp12(lroundf(uA * 10.0f));
   char b[12]; snprintf(b, sizeof b, ".B%03X", c); cmd(b); emisSent_ = c;

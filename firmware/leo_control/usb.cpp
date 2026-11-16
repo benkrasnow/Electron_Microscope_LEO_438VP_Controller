@@ -127,6 +127,7 @@ void jsonStatus(char* buf, size_t n) {
     j.i("sb", eht.statusValid() ? eht.status() : -1); j.i("word", eht.word());
     j.num("kv", eht.kvApplied(), 4); j.num("kvset", sf(OP_KV), 4);
     j.i("fil", eht.filApplied()); j.i("filset", si(OP_FIL_MA)); j.num("emis", sf(OP_EMIS_UA), 4);
+    j.num("kvout", eht.kvOut(), 4); j.num("emisout", eht.emisApplied(), 4);
     j.num("coll", sf(OP_COLL_V), 4); j.i("pm1", si(OP_PM1)); j.num("cool", eht.coolRemainingS(), 3);
     j.bo("cold", eht.filCold()); j.str("act", eht.activity()); j.str("id", eht.hwid());
   j.close();

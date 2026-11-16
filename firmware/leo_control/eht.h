@@ -31,6 +31,10 @@ public:
   bool statusValid() const { return sbValid_; }
   float kvApplied() const { return kvCur_; }
   int filApplied() const { return filCur_; }
+  // What the supply is being told now (the link has no read-back): kV only while the EHT output is on,
+  // emission as last sent (0 unless the beam is on).
+  float kvOut() const;
+  float emisApplied() const { return emisSent_ < 0 ? 0 : emisSent_ / 10.0f; }
   float kvSettled() const { return kvSettled_; }
   int word() const { return wordSent_; }
   const char* hwid() const { return hwid_; }

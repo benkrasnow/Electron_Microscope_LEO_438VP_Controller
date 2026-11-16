@@ -149,6 +149,9 @@ hr.faint { border: 0; border-top: 1px solid var(--line); opacity: .6; margin: 6p
 .num .step:hover { color: var(--text); background: var(--line); }
 input[type=number]::-webkit-inner-spin-button { display: none; }
 .chips-row { display: flex; gap: 5px; flex-wrap: wrap; }
+.actual { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gunctl { display: flex; flex-direction: column; gap: 4px; }
+.gunctl input.full { width: 100%; }
 .chips-row button { background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
 .chips-row button:hover, .chips-row button.on { color: var(--accent); border-color: var(--accent); }
 .beam { border: 0; border-radius: 10px; padding: 12px; font-size: 16px; font-weight: 700; background: #15803d; color: #eafff1; letter-spacing: .3px; }

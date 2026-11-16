@@ -159,8 +159,13 @@ function render() {
   stateClass($("beamState"), eht.beam === "on" ? "ok" : !eht.link ? "bad" : eht.beam === "off" ? "" : "warn",
     !eht.link ? "No link" : eht.beam === "cooling" ? `Cooling ${Math.ceil(eht.cool)} s` : beamTxt);
   setVal($("inKv"), eht.kvset, 1);
-  setVal($("inEmis"), eht.emis);
-  setVal($("inFil"), eht.filset);
+  setVal($("inEmis"), eht.emis); setVal($("slEmis"), eht.emis);
+  setVal($("inFil"), eht.filset); setVal($("slFil"), eht.filset);
+  // Target in the boxes, what the supply is being sent now on the right ("actual"; the link has no read-back).
+  const act = (v, unit, d = 0) => eht.link && v !== undefined ? `now ${(+v).toFixed(d)} ${unit}` : "–";
+  $("actKv").textContent = act(eht.kvout ?? (eht.beam === "on" ? eht.kv : 0), "kV", 2);
+  $("actEmis").textContent = act(eht.emisout, "µA");
+  $("actFil").textContent = act(eht.fil, "mA");
   setVal($("inColl"), eht.coll); setVal($("slColl"), eht.coll);
   // Probe current (Optibeam is always on): logarithmic slider over the calibrated range.
   if (eo.pcmax > 0) { probeRange = [eo.pcmin, eo.pcmax]; $("inProbe").min = eo.pcmin; $("inProbe").max = eo.pcmax; }
@@ -170,7 +175,6 @@ function render() {
   for (const b of $("segObeam").children) b.classList.toggle("on", b.dataset.ob === obNames[eo.obmode]);
   for (const b of $("segAp").children) b.classList.toggle("on", +b.dataset.ap === +eo.ap);
   $("slProbe").disabled = $("inProbe").disabled = eo.obmode === 2;   // Auto resolution picks the current
-  $("filNow").textContent = eht.beam !== "off" && eht.beam !== "cooling" ? `now ${eht.fil} mA` : "";
   for (const b of $("kvPresets").children) b.classList.toggle("on", +b.dataset.kv === +eht.kvset);
 
   // Image card
@@ -342,6 +346,11 @@ sliderTo("slStigY", "oStigY", () => sendLatest("stig", `stig ${$("slStigX").valu
 // Collector voltage: slider and number box, like the PMT voltage.
 $("slColl").oninput = (e) => { touch(e.target); touch($("inColl")); $("inColl").value = e.target.value; sendLatest("coll", `coll ${e.target.value}`); };
 $("inColl").addEventListener("change", (e) => { touch($("slColl")); $("slColl").value = e.target.value; });
+// Emission and filament targets: slider and number box (the box ramps the filament itself).
+for (const [sl, inp, cmd] of [["slEmis", "inEmis", "emis"], ["slFil", "inFil", "fil"]]) {
+  $(sl).oninput = (e) => { touch(e.target); touch($(inp)); $(inp).value = e.target.value; sendLatest(cmd, `${cmd} ${e.target.value}`); };
+  $(inp).addEventListener("change", (e) => { touch($(sl)); $(sl).value = e.target.value; });
+}
 
 // Probe current in pA; the slider is logarithmic over the range the box accepts (eo.pcmin..eo.pcmax).
 let probeRange = [50, 1000];

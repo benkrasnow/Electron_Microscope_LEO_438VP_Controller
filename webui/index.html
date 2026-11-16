@@ -166,9 +166,20 @@
       <div class="field inline">
         <label for="inKv">EHT</label>
         <div class="num"><button class="step" data-step="-1" data-for="inKv">−</button><input id="inKv" type="number" min="0.5" max="30" step="0.1"><button class="step" data-step="1" data-for="inKv">+</button><span class="unit">kV</span></div>
+        <span class="actual" id="actKv" title="Applied to the EHT supply now (the link has no read-back; it lags the target while ramping)">–</span>
       </div>
       <div class="chips-row" id="kvPresets">
         <button data-kv="1">1</button><button data-kv="3">3</button><button data-kv="5">5</button><button data-kv="10">10</button><button data-kv="15">15</button><button data-kv="20">20</button><button data-kv="30">30</button>
+      </div>
+      <div class="gunctl">
+        <div class="field inline"><label for="inEmis">Emission</label><div class="num"><input id="inEmis" type="number" min="0" max="400" step="5"><span class="unit">µA</span></div>
+          <span class="actual" id="actEmis" title="Emission setpoint applied to the supply now (0 unless the beam is on)">–</span></div>
+        <input type="range" id="slEmis" class="full" min="0" max="400" step="5">
+      </div>
+      <div class="gunctl">
+        <div class="field inline"><label for="inFil">Filament</label><div class="num"><input id="inFil" type="number" min="1000" max="2800" step="1"><span class="unit">mA</span></div>
+          <span class="actual" id="actFil" title="Filament current applied to the supply now (ramps at beam on / off)">–</span></div>
+        <input type="range" id="slFil" class="full" min="1000" max="2800" step="1">
       </div>
       <div class="field inline">
         <label>Optibeam</label>
@@ -185,11 +196,6 @@
           <button data-ap="50">50 µm</button>
         </div>
       </div>
-      <details class="more">
-        <summary>Gun</summary>
-        <div class="field inline"><label for="inEmis">Emission</label><div class="num"><input id="inEmis" type="number" min="0" max="400" step="5"><span class="unit">µA</span></div></div>
-        <div class="field inline"><label for="inFil">Filament</label><div class="num"><input id="inFil" type="number" min="1000" max="2800" step="1"><span class="unit">mA</span></div><span class="muted" id="filNow"></span></div>
-      </details>
     </section>
 
     <!-- Imaging / optics -->

@@ -43,7 +43,7 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
   - double-click: move the stage to centre that point.
 - **Side panels:**
   - Vacuum: pump, vent, HV / VP with target pressure.
-  - Beam: beam on/off, EHT with presets, Optibeam mode, aperture; emission and filament under "Gun".
+  - Beam: beam on/off; EHT with presets, emission and filament (sliders), each with its target and, on the right, what is being sent to the supply now (the link has no read-back; it lags the target while ramping); Optibeam mode, aperture.
   - Image: magnification, stigmators, focus wobble; rotation, tilt correction and beam shift under "Scan geometry".
   - Stage: positions, jog pad with step size, joystick sensitivity, go-to, initialise.
 

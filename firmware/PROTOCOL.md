@@ -127,7 +127,7 @@ Moves need an initialised stage (`stg.req_home`). The joystick on the stage cont
  "vac":{"link":true,"cfg":true,"st":"SPVR","txt":"Vacuum ready","raw":302,"torr":9.8e-05,"inh":0,"ready":true,"ver":"V01.01 /V02.00 "},
  "vp":{"link":true,"hs":true,"st":3,"name":"PUMPING_LP","req":3,"gauge":399,"pa":0,"tgt":20,"v8":2,"v14":0,"err":0},
  "eht":{"link":true,"ready":true,"beam":"on","sb":64,"word":3847,"kv":5,"kvset":5,"fil":2468,"filset":2468,
-        "emis":400,"coll":300,"pm1":1912,"cool":30,"cold":false,"act":"","id":"M08"},
+        "emis":400,"kvout":5,"emisout":400,"coll":300,"pm1":1912,"cool":30,"cold":false,"act":"","id":"M08"},
  "stg":{"valid":true,"homed":true,"mv":false,"lim":false,"homing":false,
         "pos":[50,50,1,0,0],"c":[8388608,8286749,7323727,8388608,8388608]},
  "eo":{"link":true,"mode":"external","mag":100,"range":1,"speed":5,"rot":0,"wd":15,"tilt":0,
@@ -148,6 +148,7 @@ Moves need an initialised stage (`stg.req_home`). The joystick on the stage cont
 | `eht.sb` | last `?S` status byte (0x40 OK, 0x10 vacuum inhibit, 0x08 reset, 0x04 filament blown, 0x02 trip); −1 = none yet |
 | `eht.word` | last `.O` supply word sent |
 | `eht.kv`, `eht.fil` | values actually sent (they lag the setpoints during ramps) |
+| `eht.kvout`, `eht.emisout` | kV the supply is told to output now (0 while the EHT bit of `.O` is off) and the emission setpoint sent (0 unless the beam is on). The link has no read-back, so these are the box's "actual" values |
 | `stg.pos` | X Y Z in mm, T R in degrees (UI coordinates); `stg.c` = raw counts |
 | `eo.link` | EO read-back check OK (chip 3 options returns the last value written) |
 | `eo.probe`, `eo.pcmin`, `eo.pcmax` | probe current setpoint (Auto resolution: the current the box picked) and the accepted range |
