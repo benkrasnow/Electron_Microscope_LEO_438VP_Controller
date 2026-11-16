@@ -441,7 +441,7 @@ GSP doubles are stored with their two 32-bit words swapped. `.cinit` holds the c
 
 `firmware/leo_control/optics.cpp` (prototype and fit: `analysis/optics/optics_model.py`, `fit_model.py`) computes the six lens DAC words from the settled kV, the displayed WD (`op.wd`), the probe current, the Optibeam mode and the aperture:
 
-1. `√Vr` (kV clamped to ≥ 100 V); gun B and d₀ interpolated from the LaB6 / standard-anode table; d₀ × `eo.kd0`.
+1. `√Vr` (kV clamped to ≥ 100 V); gun B and d₀ interpolated from the LaB6 / standard-anode table, as LEO-32 did (`eo.gun 0`, default), or from the tungsten table (`eo.gun 1`: this machine's real filament; a performance test, `notes/PERFORMANCE_TESTS.md`); d₀ × `eo.kd0`.
 2. Internal WD = (op.wd − `eo.wd_b`) / `eo.wd_a`, limited to 1–120 mm.
 3. Three passes of:
    - objective: excitation imaging the C2 crossover onto the WD (§5.3), magnification m₃ = v/u;

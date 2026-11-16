@@ -292,6 +292,7 @@ X(EO_AR2,           "eo.ar2",             50,    1,    100000, "pA",   0     , "
 X(EO_AR5,           "eo.ar5",             70,    1,    100000, "pA",   0     , "Auto resolution probe current at 5 kV") \
 X(EO_AR10,          "eo.ar10",            90,    1,    100000, "pA",   0     , "Auto resolution probe current at 10 kV") \
 X(EO_AR20,          "eo.ar20",            150,   1,    100000, "pA",   0     , "Auto resolution probe current at 20 kV (log-log interpolated; extrapolated above)") \
+X(EO_GUN,           "eo.gun",             0,     0,    1,      "",     FL_INT, "gun table for the column model: 0 LaB6 data as LEO-32 used it (matches the old system); 1 tungsten (the real filament; performance test)") \
 X(EO_PA_MIN,        "eo.pa_min",          1,     0.1,  100000, "pA",   0     , "lowest probe current accepted with eo.model 1") \
 X(EO_PA_MAX,        "eo.pa_max",          100000, 1,    1e6,    "pA",   0     , "highest probe current accepted with eo.model 1") \
 X(EO_PC_KVREF,       "eo.pc_kvref",        5,     0.5,  30,     "kV",  0     , "kV at which the eo.pc* table was taken (captures: 5 kV)") \

@@ -1,6 +1,6 @@
 # Control box settings
 
-All 364 runtime settings, generated from `leo_control/settings.h` by `tools/gen_settings_doc.py`. Read and change them over USB with `get`, `set`, `list`, `default` (see PROTOCOL.md); they are kept in flash.
+All 365 runtime settings, generated from `leo_control/settings.h` by `tools/gen_settings_doc.py`. Read and change them over USB with `get`, `set`, `list`, `default` (see PROTOCOL.md); they are kept in flash.
 
 
 ## EHT / gun supply link
@@ -314,6 +314,7 @@ All 364 runtime settings, generated from `leo_control/settings.h` by `tools/gen_
 | `eo.ar5` | 70 | 1 | 100000 | pA | Auto resolution probe current at 5 kV |
 | `eo.ar10` | 90 | 1 | 100000 | pA | Auto resolution probe current at 10 kV |
 | `eo.ar20` | 150 | 1 | 100000 | pA | Auto resolution probe current at 20 kV (log-log interpolated; extrapolated above) |
+| `eo.gun` | 0 | 0 | 1 |  | gun table for the column model: 0 LaB6 data as LEO-32 used it (matches the old system); 1 tungsten (the real filament; performance test) |
 | `eo.pa_min` | 1 | 0.1 | 100000 | pA | lowest probe current accepted with eo.model 1 |
 | `eo.pa_max` | 100000 | 1 | 1e6 | pA | highest probe current accepted with eo.model 1 |
 | `eo.pc_kvref` | 5 | 0.5 | 30 | kV | kV at which the eo.pc* table was taken (captures: 5 kV) |

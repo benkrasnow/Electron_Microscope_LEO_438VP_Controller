@@ -15,6 +15,7 @@ struct OpticsParams {
   double kD, kd0;            // Depth constant, source-size factor
   double thr;                // aperture-limited angle fraction
   double arPa[4];            // Auto resolution probe current at 2 / 5 / 10 / 20 kV (pA)
+  double gun;                // gun table: 0 = LaB6 data as LEO-32 used it, 1 = tungsten (this machine's real filament)
 };
 
 struct OpticsResult {

@@ -16,15 +16,22 @@ const double F1_MIN = 0.004970677, F1_MAX = 0.0770107, F2_MIN = 0.003679638;
 const double K3_MIN = 2.88378, K3_MAX = 10.6798;
 const double WD_MIN = 0.001, WD_MAX = 0.12;          // internal WD (m)
 
-// Gun table LEO-32 used on this machine (its "LaB6, standard anode" table): V, B, d0, dE
+// Gun tables from g200.440, standard anode: V, B, d0, dE. LEO-32 used the LaB6 table on this tungsten machine
+// (probably an off-by-one filament index; ELECTRON_OPTICS_MODEL.md §6.7); eo.gun 1 selects the tungsten table.
 struct GunRow { double v, b, d0, de; };
-const GunRow GUN[] = {
+const GunRow GUN_LAB6[] = {
   {500, 8.19e5, 7.845e-5, 0.25}, {1000, 7.25e6, 7.488e-5, 0.42}, {1500, 2.34e7, 6.849e-5, 0.57},
   {2000, 5.11e7, 6.253e-5, 0.70}, {2500, 9.14e7, 5.735e-5, 0.82}, {3000, 1.44e8, 5.29e-5, 0.92},
   {4000, 2.88e8, 4.569e-5, 1.09}, {5000, 4.78e8, 4.014e-5, 1.23}, {7500, 1.13e9, 3.062e-5, 1.51},
   {10000, 2.0e9, 2.458e-5, 1.71}, {15000, 4.14e9, 1.734e-5, 1.98}, {20000, 6.64e9, 1.317e-5, 2.14},
   {25000, 9.32e9, 1.047e-5, 2.25}, {30000, 1.21e10, 8.6e-6, 2.32}, {40000, 1.76e10, 6.18e-6, 2.39}};
-const int NGUN = sizeof GUN / sizeof GUN[0];
+const GunRow GUN_W[] = {
+  {500, 1.62e6, 1.298e-4, 0.38}, {1000, 6.15e6, 1.356e-4, 0.53}, {1500, 1.32e7, 1.297e-4, 0.64},
+  {2000, 2.27e7, 1.218e-4, 0.74}, {2500, 3.43e7, 1.14e-4, 0.82}, {3000, 4.81e7, 1.067e-4, 0.89},
+  {4000, 8.14e7, 9.42e-5, 1.02}, {5000, 1.22e8, 8.39e-5, 1.11}, {7500, 2.53e8, 6.54e-5, 1.30},
+  {10000, 4.22e8, 5.31e-5, 1.44}, {15000, 8.59e8, 3.79e-5, 1.64}, {20000, 1.42e9, 2.89e-5, 1.77},
+  {25000, 2.08e9, 2.3e-5, 1.87}, {30000, 2.84e9, 1.89e-5, 1.94}, {40000, 4.62e9, 1.35e-5, 2.04}};
+const int NGUN = sizeof GUN_LAB6 / sizeof GUN_LAB6[0];
 const double AR_KV[4] = {2, 5, 10, 20};
 
 double sqrtVr(double kv) {
@@ -53,7 +60,8 @@ void image(double zh, double zhp, double f, double zobj, double& zimg, double& m
   m = v / u;
 }
 
-void gun(double kv, double& b, double& d0) {
+void gun(bool tungsten, double kv, double& b, double& d0) {
+  const GunRow* GUN = tungsten ? GUN_W : GUN_LAB6;
   double v = kv * 1000.0;
   if (v <= GUN[0].v) { b = GUN[0].b; d0 = GUN[0].d0; return; }
   for (int i = 1; i < NGUN; i++)
@@ -165,7 +173,7 @@ bool compute(const OpticsParams& p, double kv, double wdMm, double probePa, int 
   if (wd < WD_MIN) wd = WD_MIN;
   if (wd > WD_MAX) wd = WD_MAX;
   double B, d0;
-  gun(kv, B, d0);
+  gun(p.gun >= 0.5, kv, B, d0);
   d0 *= p.kd0;
   double rad = apUm * 0.5e-6;
   double kl = 1.30364e-9 / srv;

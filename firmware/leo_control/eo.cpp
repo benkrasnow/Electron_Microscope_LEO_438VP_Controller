@@ -181,6 +181,7 @@ void Eo::opticsParams(OpticsParams& p) {
   p.xt = sd(EO_XTALK);
   p.wdA = sd(EO_WD_A); p.wdB = sd(EO_WD_B) * 1e-3;
   p.kN = sd(EO_KN); p.aN = sd(EO_AN); p.kD = sd(EO_KD); p.kd0 = sd(EO_KD0); p.thr = sd(EO_THR);
+  p.gun = si(EO_GUN);
   p.arPa[0] = sd(EO_AR2); p.arPa[1] = sd(EO_AR5); p.arPa[2] = sd(EO_AR10); p.arPa[3] = sd(EO_AR20);
 }
 

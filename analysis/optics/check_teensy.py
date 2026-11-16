@@ -1,6 +1,6 @@
 """Run every settled step of the 2026-11-15 capture table through the firmware's column model ("optics" USB
 command, nothing applied) and compare with optics_model.py and with the captured DACs.
-  python check_teensy.py [COM18]
+  python check_teensy.py [COM18] [eo.gun: 0 LaB6 as LEO-32, 1 tungsten]
 """
 import sys, os, json, time
 import numpy as np
@@ -11,6 +11,7 @@ import optics_model as om
 
 MODE = {'N': 0, 'D': 1, 'R': 2}
 port = sys.argv[1] if len(sys.argv) > 1 else 'COM18'
+GUN = int(sys.argv[2]) if len(sys.argv) > 2 else 0          # eo.gun to test (restored to 0 afterwards)
 s = serial.Serial(port, 115200, timeout=2)
 s.dtr = True; time.sleep(0.5); s.reset_input_buffer()
 
@@ -24,7 +25,8 @@ def ask(cmd, rid):
     raise TimeoutError(cmd)
 
 
-rows = load(); m = om.Column()
+ask(f'set eo.gun {GUN}', 999)
+rows = load(); m = om.Column(gun=GUN)
 dt, dc = [], []
 for k, r in enumerate(rows):
     mode = MODE[r['mode']]
@@ -35,6 +37,7 @@ for k, r in enumerate(rows):
     py = [*p['c1'], *p['c2'], *p['obj']]
     dt.append([a - b for a, b in zip(t, py)])
     dc.append([t[0] - r['c1'], t[2] - r['c2'], t[4] - r['ob']])
+ask('set eo.gun 0', 998)
 dt, dc = np.array(dt), np.array(dc)
 print(f'{len(rows)} steps')
 print('firmware - python (all six DAC words): max |diff| per word', np.abs(dt).max(axis=0))
