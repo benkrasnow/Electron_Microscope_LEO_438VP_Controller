@@ -35,6 +35,7 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
   - SE collector voltage, slider and number box;
   - probe current in pA (logarithmic slider). Optibeam is always on, so the condensers follow it; the Optibeam mode (Resolution / Depth / Auto) and the aperture fitted (30 / 50 µm) are in the Beam card.
 - **Focus** (detector column, below the probe current): the working distance in mm, 2–100 mm. The box sets the objective for that WD, so moving it shows directly how the WD changes. Coarse: slider or number box. Fine: drag the spring-return handle below them; the WD follows the drag (1 pixel = a quarter of a wheel notch, so finer at higher magnification) and holds while you hold still. On release the handle springs back to the centre and the WD stays, so the next drag continues from there and it never runs out of travel.
+- **Magnification** (below Focus): logarithmic slider (10× – 500 000×), number box and the same spring-return fine handle (0.4 % per pixel of drag).
   - Data bar: HFW, magnification, kV, WD, dwell, pixels, vacuum, frame rate.
 - **Mouse on the image:**
   - wheel: focus (steps the WD; finer at higher magnification, "Focus / notch" in the preferences);
@@ -44,7 +45,7 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
 - **Side panels:**
   - Vacuum: pump, vent, HV / VP with target pressure.
   - Beam: beam on/off; EHT with presets, emission and filament (sliders), each with its target and, on the right, what is being sent to the supply now (the link has no read-back; it lags the target while ramping); Optibeam mode, aperture.
-  - Image: magnification, stigmators, focus wobble; rotation, tilt correction and beam shift under "Scan geometry".
+  - Image: stigmators, focus wobble; rotation, tilt correction and beam shift under "Scan geometry".
   - Stage: positions, jog pad with step size, joystick sensitivity, go-to, initialise.
 
 Every interlock lives on the control box. The page only asks for things, and shows the box's reason when a request is refused. Vent and VP changes ask for confirmation.

@@ -179,7 +179,7 @@ function render() {
 
   // Image card
   stateClass($("eoState"), eo.link ? "ok" : "warn", eo.link ? `${eo.mode} scan` : "EO link ?");
-  setVal($("inMag"), Math.round(eo.mag));
+  setVal($("inMag"), Math.round(eo.mag)); setVal($("slMag"), magToSlider(eo.mag));
   setVal($("slFocus"), eo.wd); setVal($("inFocus"), eo.wd, 2);
   setVal($("slStigX"), eo.stigx); $("oStigX").textContent = eo.stigx;
   setVal($("slStigY"), eo.stigy); $("oStigY").textContent = eo.stigy;
@@ -286,7 +286,7 @@ $("btnBeam").onclick = () => {
   const b = st.eht.beam;
   sendQ(b === "on" || b === "starting" || b === "eht_off" ? "beam off" : "beam on");
 };
-const numCmd = { inKv: "kv", inEmis: "emis", inFil: "fil", inColl: "coll", inMag: "mag", inRot: "rot", inTilt: "tilt" };
+const numCmd = { inKv: "kv", inEmis: "emis", inFil: "fil", inColl: "coll", inRot: "rot", inTilt: "tilt" };
 for (const [id, cmd] of Object.entries(numCmd)) $(id).onchange = (e) => { touch(e.target); sendQ(`${cmd} ${e.target.value}`); };
 for (const b of document.querySelectorAll(".num .step")) b.onclick = () => {
   const inp = $(b.dataset.for);
@@ -311,13 +311,13 @@ function setFocusWd(wd, fromEl) {
 $("slFocus").oninput = (e) => setFocusWd(e.target.value, e.target);
 $("inFocus").onchange = (e) => setFocusWd(e.target.value, e.target);
 
-// Fine focus: a spring-return jog. Dragging the handle changes the WD in proportion to the drag (one pixel =
-// a quarter of a wheel notch, so finer at higher magnification); holding still holds the value. On release the
-// handle springs back to the centre without changing the WD, so the next drag starts from there and the
-// control never runs out of travel like a slider.
-(() => {
-  const jog = $("jogFocus"), track = jog.querySelector(".jogtrack"), handle = $("jogHandle");
-  let x0 = 0, wd0 = 0, perPx = 0;
+// Fine adjustment: a spring-return jog strip. Dragging the handle changes the value in proportion to the drag;
+// holding still holds the value. On release the handle springs back to the centre without changing the value,
+// so the next drag continues from there and the control never runs out of travel like a slider.
+// start() -> value when grabbed; apply(v0, dx) sets the value for a drag of dx pixels.
+function makeJog(id, start, apply) {
+  const jog = $(id), track = jog.querySelector(".jogtrack"), handle = jog.querySelector(".joghandle");
+  let x0 = 0, v0 = 0;
   const place = (dx) => {
     const half = track.getBoundingClientRect().width / 2 - 16;
     handle.style.left = `calc(50% - 16px + ${Math.max(-half, Math.min(half, dx))}px)`;
@@ -327,20 +327,38 @@ $("inFocus").onchange = (e) => setFocusWd(e.target.value, e.target);
     jog.classList.add("active");
     const r = handle.getBoundingClientRect();
     x0 = e.clientX < r.left || e.clientX > r.right ? r.left + r.width / 2 : e.clientX;   // grab = no jump
-    wd0 = st ? +st.eo.wd : +$("inFocus").value || 20;
-    perPx = 0.25 * Math.max(0.001, +prefs.focusStepMm * 100 / Math.max(st ? st.eo.mag : 100, 1));
+    v0 = start();
     place(e.clientX - x0);
   });
   track.addEventListener("pointermove", (e) => {
     if (!jog.classList.contains("active")) return;
     const dx = e.clientX - x0;
     place(dx);
-    setFocusWd(wd0 + dx * perPx);
+    apply(v0, dx);
   });
   const release = () => { jog.classList.remove("active"); place(0); };
   track.addEventListener("pointerup", release);
   track.addEventListener("pointercancel", release);
-})();
+}
+// Focus: one pixel = a quarter of a wheel notch (finer at higher magnification).
+makeJog("jogFocus", () => (st ? +st.eo.wd : +$("inFocus").value || 20), (wd0, dx) => {
+  const notch = Math.max(0.001, +prefs.focusStepMm * 100 / Math.max(st ? st.eo.mag : 100, 1));
+  setFocusWd(wd0 + dx * 0.25 * notch);
+});
+
+// Magnification: logarithmic slider over 10x..500000x, number box, fine jog (0.4 % per pixel).
+const MAG = [10, 500000];
+const magToSlider = (m) => Math.round(1000 * Math.log(m / MAG[0]) / Math.log(MAG[1] / MAG[0]));
+const sliderToMag = (v) => MAG[0] * (MAG[1] / MAG[0]) ** (v / 1000);
+function setMag(m, fromEl) {
+  m = Math.round(Math.min(MAG[1], Math.max(MAG[0], +m)));
+  for (const el of [$("slMag"), $("inMag")]) { touch(el); if (el !== fromEl) el.value = el === $("slMag") ? magToSlider(m) : m; }
+  if (st) { st.eo.mag = m; updateDatabar(); }
+  sendLatest("mag", `mag ${m}`);
+}
+$("slMag").oninput = (e) => setMag(sliderToMag(+e.target.value), e.target);
+$("inMag").onchange = (e) => setMag(e.target.value, e.target);
+makeJog("jogMag", () => (st ? +st.eo.mag : +$("inMag").value || 100), (m0, dx) => setMag(m0 * Math.exp(dx * 0.004)));
 sliderTo("slStigX", "oStigX", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
 sliderTo("slStigY", "oStigY", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
 // Collector voltage: slider and number box, like the PMT voltage.
@@ -587,8 +605,7 @@ $("viewport").addEventListener("wheel", (e) => {
   e.preventDefault();
   const n = e.deltaY < 0 ? 1 : -1;
   if (e.ctrlKey) {
-    const mag = Math.round(st.eo.mag * (n > 0 ? 1.15 : 1 / 1.15));
-    st.eo.mag = mag; setVal($("inMag"), mag); sendLatest("mag", `mag ${mag}`); updateDatabar();
+    setMag(st.eo.mag * (n > 0 ? 1.15 : 1 / 1.15));
   } else if (e.altKey || e.shiftKey) {
     const k = e.altKey ? "stigx" : "stigy";
     st.eo[k] = Math.max(0, Math.min(4095, st.eo[k] + n * +prefs.stigStep));

@@ -111,7 +111,15 @@
         <label for="inFocus">Focus <small>(WD, mm)</small></label>
         <div class="detrow"><input type="range" id="slFocus" min="2" max="100" step="0.01"><div class="num"><input id="inFocus" type="number" min="2" max="100" step="0.01"></div></div>
         <div class="jog" id="jogFocus" title="Fine focus: drag the handle; the WD follows the drag (finer at higher magnification). It springs back when released, ready for the next drag.">
-          <span class="jogend">−</span><div class="jogtrack"><div class="jogmid"></div><div class="joghandle" id="jogHandle"></div></div><span class="jogend">+</span>
+          <span class="jogend">−</span><div class="jogtrack"><div class="jogmid"></div><div class="joghandle"></div></div><span class="jogend">+</span>
+        </div>
+        <div class="joghint">fine</div>
+      </div>
+      <div class="det" title="Magnification. Ctrl+wheel on the image also zooms.">
+        <label for="inMag">Magnification <small>(×)</small></label>
+        <div class="detrow"><input type="range" id="slMag" min="0" max="1000" step="1" title="Logarithmic"><div class="num"><input id="inMag" type="number" min="10" max="500000" step="1"></div></div>
+        <div class="jog" id="jogMag" title="Fine magnification: drag the handle; the magnification follows the drag. It springs back when released, ready for the next drag.">
+          <span class="jogend">−</span><div class="jogtrack"><div class="jogmid"></div><div class="joghandle"></div></div><span class="jogend">+</span>
         </div>
         <div class="joghint">fine</div>
       </div>
@@ -201,10 +209,6 @@
     <!-- Imaging / optics -->
     <section class="card">
       <header><h3>Image</h3><span class="state" id="eoState">–</span></header>
-      <div class="field inline">
-        <label for="inMag">Mag</label>
-        <div class="num"><button class="step" data-mul="0.5" data-for="inMag">÷2</button><input id="inMag" type="number" min="10" max="500000" step="1"><button class="step" data-mul="2" data-for="inMag">×2</button><span class="unit">×</span></div>
-      </div>
       <div class="slider"><label>Stig X</label><input type="range" id="slStigX" min="0" max="4095" step="1"><output id="oStigX"></output></div>
       <div class="slider"><label>Stig Y</label><input type="range" id="slStigY" min="0" max="4095" step="1"><output id="oStigY"></output></div>
       <div class="row2">
