@@ -34,7 +34,7 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
   - PMT voltage (LEO-32's "brightness": PM HV channel 1 on the EHT set), slider and number box;
   - SE collector voltage, slider and number box;
   - probe current in pA (logarithmic slider). Optibeam is always on, so the condensers follow it; the Optibeam mode (Resolution / Depth / Auto) and the aperture fitted (30 / 50 µm) are in the Beam card.
-- **Focus** (detector column, below the probe current): the working distance in mm, 2–100 mm. The box sets the objective for that WD, so moving it shows directly how the WD changes. Coarse: slider or number box. Fine: drag the spring-return handle below them; the further from the centre, the faster the WD changes (full deflection = 15 wheel notches per second, scaled with magnification), and it stops and springs back when released, so it never sticks at an end.
+- **Focus** (detector column, below the probe current): the working distance in mm, 2–100 mm. The box sets the objective for that WD, so moving it shows directly how the WD changes. Coarse: slider or number box. Fine: drag the spring-return handle below them; the WD follows the drag (1 pixel = a quarter of a wheel notch, so finer at higher magnification) and holds while you hold still. On release the handle springs back to the centre and the WD stays, so the next drag continues from there and it never runs out of travel.
   - Data bar: HFW, magnification, kV, WD, dwell, pixels, vacuum, frame rate.
 - **Mouse on the image:**
   - wheel: focus (steps the WD; finer at higher magnification, "Focus / notch" in the preferences);
