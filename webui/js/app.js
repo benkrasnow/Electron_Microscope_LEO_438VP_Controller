@@ -83,7 +83,6 @@ $("btnBox").onclick = async () => {
 };
 box.addEventListener("link", (e) => {
   chip($("btnBox"), e.detail.connected ? "ok" : "bad");
-  $("lastEvent").textContent = e.detail.connected ? "Control box connected" : "Control box not connected";
   if (e.detail.connected) onBoxConnected();
   else { st = null; render(); }
 });
@@ -98,9 +97,7 @@ async function onBoxConnected() {
 box.addEventListener("status", (e) => { st = e.detail; render(); if (!$("dev").hidden && devTab === "status") $("statusJson").textContent = JSON.stringify(st, null, 2); });
 box.addEventListener("event", (e) => {
   const m = e.detail;
-  $("lastEvent").textContent = `${new Date((m.rtc || 0) * 1000 || Date.now()).toLocaleTimeString()}  ${m.src}: ${m.msg}`;
-  $("eventbar").className = "eventbar " + (m.lvl === "fault" ? "fault" : m.lvl === "warn" ? "warn" : "");
-  if (m.lvl === "fault") toast(m.msg);
+  if (m.lvl === "fault" || m.lvl === "warn") toast(`${m.src}: ${m.msg}`);   // all events: Developer → traffic
   if ($("trEvents").checked) trafficLine(`[${m.lvl}] ${m.src}: ${m.msg}`, m.lvl === "info" || m.lvl === "debug" ? "ev" : m.lvl);
 });
 box.addEventListener("trace", (e) => { const m = e.detail; trafficLine(`${m.l.padEnd(3)} ${m.d} ${m.s}`, m.l); });
@@ -688,7 +685,6 @@ $("viewport").addEventListener("dblclick", (e) => {
 let devTab = "settings";
 $("btnDevJump").onclick = () => { $("dev").hidden = false; $("dev").scrollIntoView({ behavior: "smooth" }); if (devTab === "settings" && !settings.length) loadSettings(); };
 $("btnDevClose").onclick = () => { $("dev").hidden = true; scrollTo({ top: 0, behavior: "smooth" }); };
-$("eventbar").onclick = () => { $("btnDevJump").onclick(); selectTab("traffic"); };
 function selectTab(t) {
   devTab = t;
   for (const b of $("devTabs").children) b.classList.toggle("on", b.dataset.tab === t);
@@ -829,6 +825,6 @@ worker.postMessage({ type: "connect", url: obiUrl });
 if (prefs.demo) worker.postMessage({ type: "demo", on: true });
 updateScanButtons();
 render();
-if (!box.supported) { $("lastEvent").textContent = "This browser has no Web Serial: open the page in Chrome or Edge"; chip($("btnBox"), "bad"); }
+if (!box.supported) { $("btnBox").title = "This browser has no Web Serial: open the page in Chrome or Edge"; chip($("btnBox"), "bad"); toast($("btnBox").title); }
 else box.autoConnect().then((ok) => { if (!ok) chip($("btnBox"), "bad"); });
 })();

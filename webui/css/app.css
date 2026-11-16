@@ -61,7 +61,7 @@ button:disabled { opacity: .38; cursor: not-allowed; filter: none !important; }
 .seg.full button { flex: 1; }
 
 /* ---------------------------------------------------------------- workspace */
-.workspace { display: grid; grid-template-columns: 1fr 360px; height: calc(100vh - 52px - 30px); min-height: 560px; }
+.workspace { display: grid; grid-template-columns: 1fr 360px; height: calc(100vh - 52px); min-height: 560px; }
 .imagearea { display: flex; flex-direction: column; min-width: 0; border-right: 1px solid var(--line); }
 .imgtools { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .tool { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
@@ -200,10 +200,6 @@ details.more > .field + .field { margin-top: 8px; }
 .goto input { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 5px; width: 100%; text-align: right; }
 
 /* ---------------------------------------------------------------- event bar */
-.eventbar { height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap; overflow: hidden; }
-.eventbar .lvl { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); }
-.eventbar.warn .lvl { background: var(--warn); } .eventbar.warn { color: var(--warn); }
-.eventbar.fault .lvl { background: var(--bad); } .eventbar.fault { color: var(--bad); }
 
 /* ---------------------------------------------------------------- developer */
 .dev { border-top: 3px solid var(--line); background: #0e1217; padding: 0 16px 24px; min-height: 70vh; }
@@ -250,7 +246,7 @@ dialog { background: var(--panel); color: var(--text); border: 1px solid var(--l
 dialog::backdrop { background: rgba(0, 0, 0, .6); }
 dialog h3 { margin: 0 0 8px; }
 dialog p { color: var(--muted); margin: 0 0 18px; }
-.toast { position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%); background: #3b1d1d; color: #fecaca; border: 1px solid #7f1d1d; padding: 9px 16px; border-radius: 9px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; }
+.toast { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); background: #3b1d1d; color: #fecaca; border: 1px solid #7f1d1d; padding: 9px 16px; border-radius: 9px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; }
 .toast.show { opacity: 1; }
 .toast.info { background: #0c2a3a; color: #bae6fd; border-color: #075985; }
 

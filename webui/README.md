@@ -52,7 +52,7 @@ Every interlock lives on the control box. The page only asks for things, and sho
 
 ## Developer section
 
-Open it with **Developer** in the top bar, or by clicking the event bar at the bottom.
+Open it with **Developer** in the top bar. Warnings and faults from the box also pop up as notifications; every event is in the traffic log there.
 
 | Tab | Content |
 |---|---|
