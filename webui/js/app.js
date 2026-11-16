@@ -15,7 +15,7 @@ let obiState = { bridge: false, obi: false, demo: false };
 
 // ---------------------------------------------------------------- preferences (this browser)
 const PREF_DEFAULTS = { res: "512x512", speed: "500", photo: "2048x1536", photoDwell: "4000", histLo: 0, histHi: 1,
-  dwellUnit: 125, bits: 8, hfw1: 110, focusStepMm: 0.5, stigStep: 8, ctrX: 1, ctrY: 1, extCtrl: false, demo: false, scanExt: true, jog: "0.1" };
+  dwellUnit: 125, bits: 8, hfw1: 110, focusStepMm: 0.5, wobPct: 50, stigStep: 8, ctrX: 1, ctrY: 1, extCtrl: false, demo: false, scanExt: true, jog: "0.1" };
 const prefs = Object.assign({}, PREF_DEFAULTS, (() => { try { return JSON.parse(localStorage.getItem("leo.prefs") || "{}"); } catch { return {}; } })());
 const savePrefs = () => { try { localStorage.setItem("leo.prefs", JSON.stringify(prefs)); } catch {} };
 
@@ -181,10 +181,11 @@ function render() {
   stateClass($("eoState"), eo.link ? "ok" : "warn", eo.link ? `${eo.mode} scan` : "EO link ?");
   setVal($("inMag"), Math.round(eo.mag)); setVal($("slMag"), magToSlider(eo.mag));
   setVal($("slFocus"), eo.wd); setVal($("inFocus"), eo.wd, 2);
-  setVal($("slStigX"), eo.stigx); $("oStigX").textContent = eo.stigx;
-  setVal($("slStigY"), eo.stigy); $("oStigY").textContent = eo.stigy;
+  if (performance.now() - (editing.get($("xyStig")) || 0) > 2500) showStig(eo.stigx, eo.stigy);
   setVal($("slPmt"), eht.pm1); setVal($("inPmt"), eht.pm1);
-  $("btnWobble").classList.toggle("on", eo.wob > 0);
+  if (performance.now() - (editing.get($("btnWobble")) || 0) > 2500) showWobble(eo.wob > 0);
+  if (eo.wob > 0) { setVal($("slWob"), eo.wob); $("oWob").textContent = `${Math.round(eo.wob)} %`; }
+  if (eo.wobfast !== undefined) for (const b of $("segWobSpeed").children) b.classList.toggle("on", +b.dataset.fast === eo.wobfast);
   setVal($("inRot"), eo.rot); setVal($("inTilt"), eo.tilt);
 
   // Stage card
@@ -359,8 +360,43 @@ function setMag(m, fromEl) {
 $("slMag").oninput = (e) => setMag(sliderToMag(+e.target.value), e.target);
 $("inMag").onchange = (e) => setMag(e.target.value, e.target);
 makeJog("jogMag", () => (st ? +st.eo.mag : +$("inMag").value || 100), (m0, dx) => setMag(m0 * Math.exp(dx * 0.004)));
-sliderTo("slStigX", "oStigX", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
-sliderTo("slStigY", "oStigY", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
+// Stigmator XY pad: drag anywhere and the dot follows the drag (relative, so grabbing never makes it jump);
+// X right, Y up, full pad = full range (0..4095); "Fine" scales the movement down 10x.
+const stig = { x: 2048, y: 2048, fine: false };
+function showStig(x, y) {
+  stig.x = x; stig.y = y;
+  $("xyDot").style.left = `${(x / 4095) * 100}%`;
+  $("xyDot").style.top = `${(1 - y / 4095) * 100}%`;
+  $("oStig").textContent = `X ${x} · Y ${y}`;
+}
+showStig(2048, 2048);
+(() => {
+  const pad = $("xyStig");
+  let p0 = null;
+  pad.addEventListener("pointerdown", (e) => {
+    try { pad.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
+    p0 = { cx: e.clientX, cy: e.clientY, x: stig.x, y: stig.y };
+    touch(pad);
+  });
+  pad.addEventListener("pointermove", (e) => {
+    if (!p0) return;
+    const g = 4095 / pad.getBoundingClientRect().width * (stig.fine ? 0.1 : 1);
+    const x = Math.round(Math.min(4095, Math.max(0, p0.x + (e.clientX - p0.cx) * g)));
+    const y = Math.round(Math.min(4095, Math.max(0, p0.y - (e.clientY - p0.cy) * g)));
+    touch(pad);
+    if (x === stig.x && y === stig.y) return;
+    showStig(x, y);
+    if (st) { st.eo.stigx = x; st.eo.stigy = y; }
+    sendLatest("stig", `stig ${x} ${y}`);
+  });
+  const end = () => { p0 = null; };
+  pad.addEventListener("pointerup", end);
+  pad.addEventListener("pointercancel", end);
+  $("btnStigFine").onclick = () => {
+    stig.fine = !stig.fine;
+    $("btnStigFine").classList.toggle("on", stig.fine); pad.classList.toggle("fine", stig.fine);
+  };
+})();
 // Collector voltage: slider and number box, like the PMT voltage.
 $("slColl").oninput = (e) => { touch(e.target); touch($("inColl")); $("inColl").value = e.target.value; sendLatest("coll", `coll ${e.target.value}`); };
 $("inColl").addEventListener("change", (e) => { touch($("slColl")); $("slColl").value = e.target.value; });
@@ -395,8 +431,25 @@ for (const b of $("segAp").children) b.onclick = () => sendQ(`aperture ${b.datas
 // PMT voltage ("brightness" in LEO-32): PM HV channel 1 on the EHT set (.1 command), via the box's "bright".
 $("slPmt").oninput = (e) => { touch(e.target); touch($("inPmt")); $("inPmt").value = e.target.value; sendLatest("bright", `bright ${e.target.value}`); };
 $("inPmt").onchange = (e) => { touch(e.target); touch($("slPmt")); $("slPmt").value = e.target.value; sendQ(`bright ${e.target.value}`); };
-$("btnWobble").onclick = () => sendQ(`wobble ${st && st.eo.wob > 0 ? 0 : 50}`);
-$("btnStigReset").onclick = () => sendQ("stig 2048 2048");
+// Focus wobble: the button toggles it; amount and speed are shown only while it is on.
+function showWobble(on) { $("btnWobble").classList.toggle("on", on); $("wobPanel").hidden = !on; }
+const wobSpeed = () => { const b = [...$("segWobSpeed").children].find((x) => x.classList.contains("on")); return !b || +b.dataset.fast ? "fast" : "slow"; };
+const sendWobble = () => sendLatest("wobble", `wobble ${+$("slWob").value || prefs.wobPct} ${wobSpeed()}`);
+setVal($("slWob"), prefs.wobPct); $("oWob").textContent = `${prefs.wobPct} %`;
+$("btnWobble").onclick = () => {
+  const on = !$("btnWobble").classList.contains("on");
+  touch($("btnWobble")); showWobble(on);
+  if (on) sendWobble(); else sendLatest("wobble", "wobble 0");
+};
+$("slWob").oninput = (e) => {
+  touch(e.target); $("oWob").textContent = `${e.target.value} %`;
+  prefs.wobPct = +e.target.value; savePrefs(); sendWobble();
+};
+for (const b of $("segWobSpeed").children) b.onclick = () => {
+  for (const x of $("segWobSpeed").children) x.classList.toggle("on", x === b);
+  sendWobble();
+};
+$("btnStigReset").onclick = () => { touch($("xyStig")); showStig(2048, 2048); sendQ("stig 2048 2048"); };
 
 // Stage
 $("selJog").value = prefs.jog;
@@ -609,6 +662,7 @@ $("viewport").addEventListener("wheel", (e) => {
   } else if (e.altKey || e.shiftKey) {
     const k = e.altKey ? "stigx" : "stigy";
     st.eo[k] = Math.max(0, Math.min(4095, st.eo[k] + n * +prefs.stigStep));
+    showStig(st.eo.stigx, st.eo.stigy); touch($("xyStig"));
     sendLatest("stig", `stig ${st.eo.stigx} ${st.eo.stigy}`);
   } else {
     // Focus = WD; the step shrinks with magnification (depth of field). Wheel up = shorter WD.

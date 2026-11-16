@@ -146,7 +146,7 @@ void jsonStatus(char* buf, size_t n) {
     { double lo = 0, hi = 0; Eo::probeRange(lo, hi);
       j.num("probe", sf(OP_PROBE_PA)); j.num("pcmin", lo); j.num("pcmax", hi); j.bo("obeam", si(EO_OPTIBEAM)); }
     j.bo("model", eo.model()); j.i("obmode", si(OP_OBEAM)); j.num("ap", sf(OP_APERTURE)); j.num("kvlens", eo.kvUsed(), 4);
-    j.num("wob", sf(OP_WOB_PCT)); j.bo("frz", eo.frozen()); j.i("frames", eo.frames()); j.i("q", eo.queued());
+    j.num("wob", sf(OP_WOB_PCT)); j.i("wobfast", si(OP_WOB_FAST)); j.bo("frz", eo.frozen()); j.i("frames", eo.frames()); j.i("q", eo.queued());
     j.num("line_us", eo.linePeriodUs());
   j.close();
   j.openArr("btn"); for (int i = 0; i < 3; i++) j.ai(btnState(i)); j.closeArr();

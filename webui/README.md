@@ -45,7 +45,7 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
 - **Side panels:**
   - Vacuum: pump, vent, HV / VP with target pressure.
   - Beam: beam on/off; EHT with presets, emission and filament (sliders), each with its target and, on the right, what is being sent to the supply now (the link has no read-back; it lags the target while ramping); Optibeam mode, aperture.
-  - Image: stigmators, focus wobble; rotation, tilt correction and beam shift under "Scan geometry".
+  - Image: stigmator XY pad (drag anywhere: the dot follows the drag, X right / Y up; "Fine" scales the movement down 10×; "Centre" = 2048 / 2048), focus wobble (amount and speed appear while it is on); rotation, tilt correction and beam shift under "Scan geometry".
   - Stage: positions, jog pad with step size, joystick sensitivity, go-to, initialise.
 
 Every interlock lives on the control box. The page only asks for things, and shows the box's reason when a request is refused. Vent and VP changes ask for confirmation.

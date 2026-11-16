@@ -209,11 +209,22 @@
     <!-- Imaging / optics -->
     <section class="card">
       <header><h3>Image</h3><span class="state" id="eoState">–</span></header>
-      <div class="slider"><label>Stig X</label><input type="range" id="slStigX" min="0" max="4095" step="1"><output id="oStigX"></output></div>
-      <div class="slider"><label>Stig Y</label><input type="range" id="slStigY" min="0" max="4095" step="1"><output id="oStigY"></output></div>
-      <div class="row2">
-        <button id="btnWobble" class="toggle">Focus wobble</button>
-        <button id="btnStigReset" class="ghost">Centre stigmators</button>
+      <div class="stig">
+        <div class="stighead"><label>Stigmator</label><span class="stigval" id="oStig">X – · Y –</span></div>
+        <div class="xypad" id="xyStig" title="Drag anywhere: the dot follows the drag (X right, Y up). Fine scales the movement down 10×.">
+          <div class="xyaxis h"></div><div class="xyaxis v"></div><div class="xydot" id="xyDot"></div>
+        </div>
+        <div class="row2">
+          <button id="btnStigFine" class="toggle" title="Scale mouse movement down 10×">Fine</button>
+          <button id="btnStigReset" class="ghost">Centre</button>
+        </div>
+      </div>
+      <button id="btnWobble" class="toggle">Focus wobble</button>
+      <div class="wobpanel" id="wobPanel" hidden>
+        <div class="slider"><label>Amount</label><input type="range" id="slWob" min="1" max="100" step="1"><output id="oWob"></output></div>
+        <div class="field inline"><label>Speed</label>
+          <div class="seg grow" id="segWobSpeed"><button data-fast="1" class="on">Fast</button><button data-fast="0">Slow</button></div>
+        </div>
       </div>
       <details class="more">
         <summary>Scan geometry</summary>

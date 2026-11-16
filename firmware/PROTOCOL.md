@@ -132,7 +132,7 @@ Moves need an initialised stage (`stg.req_home`). The joystick on the stage cont
         "pos":[50,50,1,0,0],"c":[8388608,8286749,7323727,8388608,8388608]},
  "eo":{"link":true,"mode":"external","mag":100,"range":1,"speed":5,"rot":0,"wd":15,"tilt":0,
        "objc":790,"focus":2234,"stigx":2048,"stigy":2048,"probe":300,"pcmin":1,"pcmax":100000,"obeam":true,
-       "model":true,"obmode":0,"ap":50,"kvlens":5,"wob":0,"frz":false,"frames":0,"q":0,"line_us":2811},
+       "model":true,"obmode":0,"ap":50,"kvlens":5,"wob":0,"wobfast":1,"frz":false,"frames":0,"q":0,"line_us":2811},
  "btn":[0,0,0]}
 ```
 
