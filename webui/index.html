@@ -52,11 +52,6 @@
         </select>
       </label>
       <span class="sep"></span>
-      <label class="tool focus" title="Focus = working distance: the objective is set for the WD shown. Wheel on the image: fine focus">Focus
-        <input type="range" id="slFocus" min="2" max="100" step="0.01">
-        <input id="inFocus" type="number" min="2" max="100" step="0.01"><span class="unit">mm WD</span>
-      </label>
-      <span class="sep"></span>
       <label class="tool">Photo
         <select id="selPhoto">
           <option value="1024x768">1024×768</option>
@@ -110,6 +105,15 @@
       <div class="det">
         <label for="inProbe">Probe current <small>(pA)</small></label>
         <div class="detrow"><input type="range" id="slProbe" min="0" max="1000" step="1" title="Logarithmic"><div class="num"><input id="inProbe" type="number" min="1" step="any"></div></div>
+      </div>
+      <hr class="faint">
+      <div class="det" title="Focus = working distance: the box sets the objective for the WD shown. Wheel on the image also focuses.">
+        <label for="inFocus">Focus <small>(WD, mm)</small></label>
+        <div class="detrow"><input type="range" id="slFocus" min="2" max="100" step="0.01"><div class="num"><input id="inFocus" type="number" min="2" max="100" step="0.01"></div></div>
+        <div class="jog" id="jogFocus" title="Fine focus: drag the handle; the further from the centre, the faster the WD changes. It springs back when released.">
+          <span class="jogend">−</span><div class="jogtrack"><div class="jogmid"></div><div class="joghandle" id="jogHandle"></div></div><span class="jogend">+</span>
+        </div>
+        <div class="joghint">fine</div>
       </div>
     </div>
     </div>

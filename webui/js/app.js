@@ -306,6 +306,39 @@ function setFocusWd(wd, fromEl) {
 }
 $("slFocus").oninput = (e) => setFocusWd(e.target.value, e.target);
 $("inFocus").onchange = (e) => setFocusWd(e.target.value, e.target);
+
+// Fine focus: a spring-return jog. The handle's offset from the centre sets the rate of change (quadratic,
+// so small offsets are very slow); at full deflection the WD moves 15 wheel notches per second. Releasing
+// the handle stops the change and lets it spring back, so it never sticks at a limit like a slider.
+(() => {
+  const jog = $("jogFocus"), track = jog.querySelector(".jogtrack"), handle = $("jogHandle");
+  let pos = 0, timer = 0, last = 0, wd = null;
+  const place = () => { handle.style.left = `calc(${50 + pos * 50}% - 16px)`; };
+  const tick = () => {
+    const t = performance.now(), dt = Math.min(0.1, (t - last) / 1000); last = t;
+    if (pos) {
+      if (wd === null) wd = st ? +st.eo.wd : +$("inFocus").value || 20;
+      const notch = Math.max(0.001, +prefs.focusStepMm * 100 / Math.max(st ? st.eo.mag : 100, 1));
+      wd += Math.sign(pos) * pos * pos * 15 * notch * dt;
+      wd = Math.min(100, Math.max(2, wd));
+      setFocusWd(wd);
+    }
+  };
+  const move = (e) => {
+    const r = track.getBoundingClientRect();
+    pos = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (r.width / 2 - 16)));
+    place();
+  };
+  track.addEventListener("pointerdown", (e) => {
+    try { track.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
+    jog.classList.add("active"); wd = null; last = performance.now();
+    move(e); clearInterval(timer); timer = setInterval(tick, 30);
+  });
+  track.addEventListener("pointermove", (e) => { if (jog.classList.contains("active")) move(e); });
+  const release = () => { jog.classList.remove("active"); clearInterval(timer); pos = 0; wd = null; place(); };
+  track.addEventListener("pointerup", release);
+  track.addEventListener("pointercancel", release);
+})();
 sliderTo("slStigX", "oStigX", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
 sliderTo("slStigY", "oStigY", () => sendLatest("stig", `stig ${$("slStigX").value} ${$("slStigY").value}`));
 // Collector voltage: slider and number box, like the PMT voltage.

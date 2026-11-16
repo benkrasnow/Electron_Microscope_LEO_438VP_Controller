@@ -68,8 +68,15 @@ button:disabled { opacity: .38; cursor: not-allowed; filter: none !important; }
 .tool { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
 .tool select, .field select { background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; }
 .tool.slim input { width: 80px; }
-.tool.focus input[type=range] { width: 170px; }
-.tool.focus input[type=number] { width: 72px; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; }
+hr.faint { border: 0; border-top: 1px solid var(--line); opacity: .6; margin: 6px 0; width: 100%; }
+/* Fine focus: spring-return jog handle (rate control, so it never runs into an end stop) */
+.jog { display: flex; align-items: center; gap: 8px; margin-top: 4px; user-select: none; }
+.jogend { color: var(--dim); font-size: 13px; width: 10px; text-align: center; }
+.jogtrack { position: relative; flex: 1; height: 22px; border-radius: 11px; background: var(--panel2); border: 1px solid var(--line); touch-action: none; cursor: ew-resize; }
+.jogmid { position: absolute; left: 50%; top: 4px; bottom: 4px; width: 1px; background: var(--line); }
+.joghandle { position: absolute; top: 2px; left: calc(50% - 16px); width: 32px; height: 16px; border-radius: 8px; background: var(--accent2); opacity: .85; box-shadow: 0 1px 3px rgba(0,0,0,.4); transition: left .18s ease-out; }
+.jog.active .joghandle { transition: none; opacity: 1; }
+.joghint { color: var(--dim); font-size: 10.5px; text-align: center; margin-top: -2px; }
 .imgtools .sep { width: 1px; height: 24px; background: var(--line); }
 .viewport { position: relative; flex: 1; background: #000; min-height: 0; }
 .viewport canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
