@@ -26,9 +26,10 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
 ## Operator page
 
 - **Top bar:** vacuum, beam and chamber-mode status chips, the running sequence, link indicators, clock, and a link to the Developer tools.
-- **Image area:**
-  - Live / Freeze, scan speed (dwell time), live resolution.
-  - Photo capture: resolution and dwell; saves a 16-bit TIFF with all parameters in the TIFF description, readable by ImageJ / Fiji.
+- **Image area:** the image, then two control columns to its right (both go under the image in a narrow window):
+- **Scan column** (next to the image):
+  - Live: Live / Freeze, scan speed (dwell time), live resolution.
+  - Photo: size and dwell, Capture; saves a 16-bit TIFF with all parameters in the TIFF description, readable by ImageJ / Fiji.
 - **Detector column to the right of the image** (below it in a narrow window):
   - histogram of the raw OBI values over the full 16-bit range, with two draggable lines: left = black, right = white (drag between them to move both). They set the live display and are applied to saved TIFFs (the levels are recorded in the TIFF description);
   - PMT voltage (LEO-32's "brightness": PM HV channel 1 on the EHT set), slider and number box;

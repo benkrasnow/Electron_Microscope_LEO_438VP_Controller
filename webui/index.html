@@ -29,47 +29,6 @@
 <!-- ============================================================ workspace -->
 <main class="workspace">
   <section class="imagearea">
-    <div class="imgtools">
-      <div class="seg" id="segScan">
-        <button data-scan="live" class="primary" id="btnLive">▶ Live</button>
-        <button data-scan="freeze" id="btnFreeze">❚❚ Freeze</button>
-      </div>
-      <label class="tool">Speed
-        <select id="selSpeed">
-          <option value="125">Fast</option>
-          <option value="500" selected>Normal</option>
-          <option value="2000">Slow</option>
-          <option value="8000">Very slow</option>
-        </select>
-      </label>
-      <label class="tool">Live
-        <select id="selRes">
-          <option value="256x256">256²</option>
-          <option value="512x512" selected>512²</option>
-          <option value="768x768">768²</option>
-          <option value="1024x768">1024×768</option>
-          <option value="1024x1024">1024²</option>
-        </select>
-      </label>
-      <span class="sep"></span>
-      <label class="tool">Photo
-        <select id="selPhoto">
-          <option value="1024x768">1024×768</option>
-          <option value="2048x1536" selected>2048×1536</option>
-          <option value="4096x3072">4096×3072</option>
-        </select>
-      </label>
-      <label class="tool">Dwell
-        <select id="selPhotoDwell">
-          <option value="1000">1 µs</option>
-          <option value="4000" selected>4 µs</option>
-          <option value="16000">16 µs</option>
-        </select>
-      </label>
-      <button id="btnCapture" class="accent">◉ Capture</button>
-      <span class="grow"></span>
-    </div>
-
     <div class="imgrow">
     <div class="viewport" id="viewport">
       <canvas id="canvas"></canvas>
@@ -87,6 +46,51 @@
       <div class="hint" id="hint">Wheel: focus · Ctrl+wheel: magnification · Alt / Shift+wheel: stigmator X / Y · Double-click: centre</div>
     </div>
 
+    <div class="obibar">
+      <div class="obigroup">
+        <div class="obihead">Live</div>
+        <div class="seg" id="segScan">
+          <button data-scan="live" class="primary" id="btnLive">▶ Live</button>
+          <button data-scan="freeze" id="btnFreeze">❚❚ Freeze</button>
+        </div>
+        <label class="tool">Speed
+          <select id="selSpeed">
+            <option value="125">Fast</option>
+            <option value="500" selected>Normal</option>
+            <option value="2000">Slow</option>
+            <option value="8000">Very slow</option>
+          </select>
+        </label>
+        <label class="tool">Resolution
+          <select id="selRes">
+            <option value="256x256">256²</option>
+            <option value="512x512" selected>512²</option>
+            <option value="768x768">768²</option>
+            <option value="1024x768">1024×768</option>
+            <option value="1024x1024">1024²</option>
+          </select>
+        </label>
+      </div>
+      <hr class="faint">
+      <div class="obigroup">
+        <div class="obihead">Photo</div>
+        <label class="tool">Size
+          <select id="selPhoto">
+            <option value="1024x768">1024×768</option>
+            <option value="2048x1536" selected>2048×1536</option>
+            <option value="4096x3072">4096×3072</option>
+          </select>
+        </label>
+        <label class="tool">Dwell
+          <select id="selPhotoDwell">
+            <option value="1000">1 µs</option>
+            <option value="4000" selected>4 µs</option>
+            <option value="16000">16 µs</option>
+          </select>
+        </label>
+        <button id="btnCapture" class="accent">◉ Capture</button>
+      </div>
+    </div>
     <div class="detbar">
       <div class="det">
       <label>Histogram</label>
