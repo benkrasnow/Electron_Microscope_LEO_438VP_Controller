@@ -11,7 +11,6 @@
   --ok: #34d399;
   --warn: #fbbf24;
   --bad: #f87171;
-  --stop: #dc2626;
   --radius: 10px;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
   color-scheme: dark;
@@ -183,8 +182,6 @@ details.more > .field + .field { margin-top: 8px; }
 .jogside select { background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; }
 .goto { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 8px; }
 .goto input { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 5px; width: 100%; text-align: right; }
-.stopall { margin-top: auto; border: 0; border-radius: var(--radius); padding: 14px; font-size: 17px; font-weight: 800; letter-spacing: 2px; background: var(--stop); color: #fff; }
-.stopall:active { filter: brightness(1.25); }
 
 /* ---------------------------------------------------------------- event bar */
 .eventbar { height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap; overflow: hidden; }

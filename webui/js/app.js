@@ -110,7 +110,7 @@ box.addEventListener("reply", (e) => { if ($("trUsb").checked) trafficLine(`usb 
 // ---------------------------------------------------------------- status rendering
 function render() {
   const on = !!st;
-  for (const b of document.querySelectorAll(".sidebar button, .sidebar input, .sidebar select, .detbar input")) if (b.id !== "btnStopAll") b.disabled = !on;
+  for (const b of document.querySelectorAll(".sidebar button, .sidebar input, .sidebar select, .detbar input")) b.disabled = !on;
   if (!st) {
     for (const id of ["chipVacTxt", "chipBeamTxt", "chipModeTxt"]) $(id).textContent = "–";
     for (const id of ["chipVac", "chipBeam"]) chip($(id), null);
@@ -385,13 +385,6 @@ $("btnGoto").onclick = () => {
   sendQ(`stage goto ${v.join(" ")}`);
 };
 $("slJoy").oninput = (e) => sendLatest("joy", `set stg.joy_gain ${(2 ** +e.target.value).toFixed(3)}`);
-
-// STOP: button and Escape
-const stopAll = () => { sendQ("safe"); toast("STOP: beam off, stage stopped, sequences aborted", true); };
-$("btnStopAll").onclick = stopAll;
-addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !$("dlg").open) stopAll();
-});
 
 // ---------------------------------------------------------------- imaging
 const parseRes = (s) => s.split("x").map(Number);

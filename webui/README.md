@@ -46,7 +46,6 @@ The bridge relays bytes and does nothing else. The control-box functions work wi
   - Beam: beam on/off, EHT with presets, Optibeam mode, aperture; emission and filament under "Gun".
   - Image: magnification, stigmators, focus wobble; rotation, tilt correction and beam shift under "Scan geometry".
   - Stage: positions, jog pad with step size, joystick sensitivity, go-to, initialise.
-- **STOP** (or **Esc**): beam off, stage stop, abort sequences.
 
 Every interlock lives on the control box. The page only asks for things, and shows the box's reason when a request is refused. Vent and VP changes ask for confirmation.
 
