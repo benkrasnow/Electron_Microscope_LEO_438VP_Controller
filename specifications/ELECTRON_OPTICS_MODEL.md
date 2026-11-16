@@ -4,7 +4,7 @@
 |---|---|
 | Subject | How accelerating voltage (kV), working distance (WD), probe current and focus determine the lens currents; the column model LEO-32 uses (Optibeam) |
 | Source | Decompilation of the GSP module `TIGA/g200.440`. Source files `gcondens`, `gfocus`, `geht`, `goptctrl`, `gcolmod`, `gscncoil` and `gscnxfrm`. The machine data file `C:\LEO\Data.vac`, decoded with the field table of LEO's own `view.exe`. The factory calibration `LEO-32\435vpcal\LEO 438V.clb` |
-| Revision | 0.6, 2026-11-15 (0.1–0.5 same day): fitted to the 2026-11-15 EO captures (§6.7) and implemented in the firmware (§13) |
+| Revision | 0.7, 2026-11-15 (0.1–0.6 same day): fitted to the 2026-11-15 EO captures (§6.7), implemented in the firmware (§13); superseded statements marked, measurement status (§11) |
 | Tools | `analysis/fdec.py` (symbolic decompiler for the TI 340x0 C compiler's software floating point); `analysis/gspemu.py` + `analysis/optics/emu_driver.py` (TMS34020 emulator that runs LEO-32's own column code); raw outputs in `analysis/optics/` |
 
 Markers: **[D]** decoded from the code with constants; **[C]** cross-checked against scope captures; **[I]** inferred, needs confirmation.
@@ -28,8 +28,12 @@ It does not keep tables of DAC values. Every operator control changes one input 
 | **WD** (typed in) | Target image plane of the objective | **Objective (C3)**, solved iteratively (§5.3) |
 | **Focus** (knob) | Objective excitation `k` directly, in steps scaled to magnification (§5.4). The displayed WD is the image distance this produces | **Objective (C3)** only |
 | Aperture selection | Aperture diameter in the probe model | C1/C2 for the same probe current (Optibeam on) |
+| Optibeam mode | Normal: angle optimised for resolution at the probe current; Depth: C2 at its limit, small angle; Auto resolution: LEO-32 also picks the probe current (§6.7) | C1/C2 (objective slightly) |
+| Magnification | Nothing: magnification is only in the scan-coil weights | none |
 
-So **focus and WD are the same thing**: focusing is solving for the objective excitation that images the C2 crossover onto the specimen, and the WD readout is that distance. **Probe current is set by the condensers.** **kV rescales everything** by `√Vr` and changes the gun.
+So **focus and WD are the same thing**: focusing is solving for the objective excitation that images the C2 crossover onto the specimen, and the WD readout is that distance. **Probe current is set by the condensers.** **kV rescales everything** by `√Vr` and changes the gun. Two LEO-32 details matter when comparing captures (§6.7):
+- the WD shown on screen is rescaled before the model uses it;
+- the model runs on the applied kV, which is 0 (clamped to 100 V) with the beam off.
 
 ## 2. Column geometry **[D]**
 
@@ -45,7 +49,7 @@ Coordinates along the optical axis are in metres, as used by the code. The objec
 | Objective (C3) principal planes | functions of excitation, §5.1 (≈ −0.008) | `gfocus` |
 | Specimen | +WD; allowed 0.001–0.12 m | `_gsp_set_working_dist` |
 
-Apertures (`Data.vac`): 30 µm (in use), 50 µm, 750 µm on the strip (§7).
+Apertures (`Data.vac`): 30 µm, 50 µm, 750 µm on the strip (§7). The LEO-32 UI offers 30 and 50 µm (50 µm default). The entry is software only: nothing senses which aperture is in the beam, and the operator reports little difference in image quality between them.
 
 ## 3. Common lens law **[D]**
 
@@ -139,7 +143,7 @@ I      = ((coarse << 8) + low byte + 2048) / 1 048 575 × 3 A
 ```
 - Register map, confirmed in `_gsp_set_condenser_lens_current`: C1 = chip 0 DAC0 (coarse) / DAC1 (fine); C2 = DAC2 / DAC3; objective = chip 1 DAC0 / DAC1.
 - Captured objective coarse 382 / 550 / 790 at 5 / 10 / 20 kV = **0.286 / 0.409 / 0.585 A**. The ratios match √Vr (1.43 vs 1.42), confirming the excitation law.
-- The absolute values correspond to a longer WD than the 10 mm assumed in revision 0.1. The WD of those captures was not recorded (measurement M2 in §11).
+- The absolute values correspond to a longer WD than the 10 mm assumed in revision 0.1. With the displayed-WD conversion of §6.7, the 5 kV captures (objective coarse 380–383) were taken at a displayed WD of about 45 mm.
 
 ### 5.7 Image rotation by the objective (tail of `_gsp_calc_focus_lens_current`) **[D][C]**
 ```
@@ -199,6 +203,8 @@ f1 = u1·v1/(u1 + v1),   f2 = u2·v2/(u2 + v2)     → _gsp_set_condenser_focal_
 Probe-current range (0x567b0): `I_max = B·(α_g·d₀/0.53)²` with the gun acceptance α_g = 1.6779 mrad. The extreme condenser settings are the minimum focal lengths C1 4.9707 mm and C2 3.6796 mm. Lens record layout: `[zH, zH', f, k, I, z_crossover, M, N, –]` (`_update_C1/C2_crossover_and_mag`).
 
 ### 6.4 Cross-check against the probe-current captures (5 kV) **[C]** partly
+*Superseded by §6.7 and §13: these captures were in Normal mode at a displayed WD of about 45 mm, and the mode identification below was wrong.*
+
 `analysis/optics/column_model.py` runs the decoded chain from the captured DACs: DAC → current → excitation (with crosstalk) → focal length → crossover positions.
 
 | Requested | C1 / C2 current | f1 / f2 (mm) | C2 crossover z (mm) | M1·M2 |
@@ -214,6 +220,8 @@ Probe-current range (0x567b0): `I_max = B·(α_g·d₀/0.53)²` with the gun acc
 - Rev 0.2's single-law check (68 pA at the 50 pA setting) assumed the conjugate-mode angle and is superseded by this mode identification.
 
 ### 6.5 Running LEO-32's own code: the GSP emulator **[D][C]**
+*The C1 mismatch described here was resolved in §6.7: the PC rescales the displayed WD, LEO-32 used the LaB6 gun table, and its effective condenser calibrations are ≈ 0.94 / 0.90.*
+
 `analysis/gspemu.py` is a TMS34020 interpreter for `g200.440`:
 - bit-addressed memory with `.text`, `.data` and `.cinit` loaded;
 - the FS$/FD$ software-float library and the C maths calls (`sqrt`, `sin`, `cos`, `log`, `exp`, `pow`) done in Python;
@@ -251,9 +259,7 @@ The likeliest explanation is PC-side state the emulator does not set yet. Candid
 - the PC's Optibeam start-up sequence (`_cp_set_aperture_data`, `_cp_set_current_aperture`, `_cp_FE_optibeam_update`, condition tables);
 - a manual condenser adjustment during the captures.
 
-M3/M4 captures with the LEO-32 Optibeam screen recorded (M8) would settle it. Until then:
-- The control box uses the captured table for C1/C2 (`eo.pc*`).
-- The emulator is the reference for the objective and for kV/WD scaling.
+M3/M4 captures with the LEO-32 Optibeam screen recorded (M8) would settle it. (They were taken on 2026-11-15, §6.7; the control box now uses the column model of §13, and the `eo.pc*` table remains only as the `eo.model 0` fallback.)
 
 ### 6.6 PC start-up state, condition table and saved operating points **[D][C]**
 
@@ -313,7 +319,7 @@ Findings:
 | UI Optibeam modes | Dispatcher `_gsp_notify_optibeam`: **Normal** = mode 0 (`sub_5e000`, optimum angle from Cs); **Depth** = mode 1 (`sub_5ef50`, C2 at its 3.6796 mm focal-length limit); **Auto resolution** = flag +12 (`sub_5df00` picks the probe current: 150 / 90 / 70 / 50 pA at 20 / 10 / 5 / 2 kV, independent of WD and aperture), then mode 0 |
 | Displayed WD | internal WD = (displayed − 1.876 mm) / 1.217 (fit; rms 1.6 objective counts over 5–100 mm and 1–30 kV). A PC-side conversion: a different C3 calibration fits much worse |
 | Condenser calibration | LEO-32 behaves as if C1 / C2 cal were ≈ 0.936 / 0.904, not `Data.vac`'s 1.0597 / 1.05973. The Depth-mode C2 ceiling fixes C2's value to 3 counts at 5 and 20 kV |
-| Gun table | The **LaB6 / standard-anode** table (filament selector 0x172b00 = 1) reproduces the probe-current dependence; the tungsten table does not. Presumably the PC's filament index differs from the GSP's |
+| Gun table | The **LaB6 / standard-anode** table (filament selector 0x172b00 = 1) reproduces the probe-current dependence; the tungsten table does not. Likely cause: LEO-32 sends filament type 1 for tungsten to the EHT set (`.T1`) and passes the same index to the GSP, whose table 1 is LaB6 **[I]** |
 | Magnification | no lens writes |
 | History | none: every state repeats to within a few counts after other changes; first update after a kV change = settled value within 3 counts |
 
@@ -408,6 +414,13 @@ These use the old system while it still runs, with the scope / serial loggers al
 | M8 | The LEO-32 Optibeam status screen (probe size, current, depth of field) for M3's settings, as screenshots | check of the probe-size terms |
 
 M2, M4 and M5 need only the existing EO fiber capture setup. M3 needs a Faraday cup on the stage and a picoammeter (or the EO board's specimen-current input, if fitted).
+
+**Status 2026-11-15** (`scope_tools/EO_OPTICS_TEST_PLAN.md`):
+- **Done:** M2 (WD 5–100 mm at 20 kV, 5–80 mm at 5 kV) and M4 (probe current 10 pA–100 nA at 20 and 5 kV, kV 1–30 both ways), plus Depth / Auto resolution, aperture entry and magnification.
+- **Answered:** M7. The aperture is entered by hand (30 / 50 µm) and not sensed; the operator sees little difference between them.
+- **Not needed:** M3 and M8. Exact probe current is not required, and LEO-32 does not show probe size.
+- **Not done:** the low-kV spacer and VP. The UI selects the spacer only with the beam off, and LEO-32 does not know about VP on this machine.
+- **Still open:** M1, M5, M6.
 
 ## 12. Reproducing
 

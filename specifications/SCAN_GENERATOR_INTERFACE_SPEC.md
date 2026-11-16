@@ -4,8 +4,8 @@
 |---|---|
 | Subsystem | Scan generator / electron-optics ("EO") board: X and Y scan, scan-coil amplitude / range / rotation / shift, objective and condenser lens DACs, stigmators, focus wobble, frame and line gating |
 | Host in the original system | ISA image-processor (IP) board. Its ADSP-21xx DSP drives a "remote register bus" (DM 0x3400 + n, busy flag at DM 0x37FF; target 0x40 = EO, 0x20 = HRRU) that is serialised onto the fibers |
-| Revision | **1.1**, 2026-11-13 (1.0 same day: beam-off tests; 0.9 2026-11-12) |
-| Basis | MSO24 captures of all four fibers while operating every LEO-32 scan and lens control, beam off and beam on under vacuum (probe current, EHT, Optibeam modes), including a cold boot; photos of the EO board; the static EO register map from the drive image. Test log: `scope_tools/SCAN_FIBER_NOTES.md` |
+| Revision | **1.2**, 2026-11-15: lens section rewritten after the 2026-11-15 optics captures and the LEO-32 column-model decode (`ELECTRON_OPTICS_MODEL.md`) (1.1 2026-11-13; 1.0 same day: beam-off tests; 0.9 2026-11-12) |
+| Basis | MSO24 captures of all four fibers while operating every LEO-32 scan and lens control, beam off and beam on under vacuum (probe current, EHT, Optibeam modes), including a cold boot; about 130 settled lens states on 2026-11-15 (`scope_tools/EO_OPTICS_TEST_PLAN.md`); photos of the EO board; the static EO register map from the drive image. Test log: `scope_tools/SCAN_FIBER_NOTES.md` |
 
 Confidence markers: **[C]** confirmed by capture, **[F]** from the original firmware / software (static analysis), **[I]** inferred, needs verification.
 
@@ -42,7 +42,7 @@ The fibers carry **no image data**; the detector video goes to the IP board on a
 | DG411 / DG211 analog switches, LF353 / OP15 op-amps, PALCE22V10, 74HC04 / 74HCT20 | | ramp / external-scan selection, fiber decode glue | |
 | Toroid + power transistor stages (TR9, TR11, TR23) | 3 | lens current drivers | C1, C2, C3 cables |
 
-**Connectors.** Left: fiber inputs, EXT SCAN EN (with optocoupler OPT1), scan out, SCAN IN (external X / Y, ±10 V), FRAME, X / Y scan power, GUN ALIGN PWR. Right (bottom to top): **C1, C2, C3, Stig**. Best estimate: **C1 / C2 = the two condenser lenses** (chip 0 DAC0/1 and DAC2/3, pairing not yet determined), **C3 = objective (final lens)** (chip 1 DAC0/1), **Stig** = stigmator octupole (chip 0 DAC6/7). Confirm with a current probe while focusing / changing probe current.
+**Connectors.** Left: fiber inputs, EXT SCAN EN (with optocoupler OPT1), scan out, SCAN IN (external X / Y, ±10 V), FRAME, X / Y scan power, GUN ALIGN PWR. Right (bottom to top): **C1, C2, C3, Stig**. **C1 = first condenser** (chip 0 DAC0 coarse / DAC1 fine), **C2 = second condenser** (chip 0 DAC2 / DAC3), **C3 = objective (final lens)** (chip 1 DAC0 / DAC1), **Stig** = stigmator octupole (chip 0 DAC6/7). The lens pairing is from LEO-32's `_gsp_set_condenser_lens_current` and is consistent with all optics captures **[F][C]**; the connector pins are still to be confirmed with a current probe.
 
 **External scan path [I].** There is no ADC on the board and no extra traffic in external mode; the software only flips the select bit and neutralises the centring offsets, and leaves the coil weights in place. The external ±10 V X / Y signals are therefore most likely switched (DG411 / relay) in place of the internal ramps **ahead of the multiplying coil-weight DACs**, so magnification, rotation, tilt and kV scaling still apply to them. Test: ±10 V triangle on X in external mode, check that the field scales with magnification and rotates with scan rotation.
 
@@ -99,12 +99,12 @@ About 5 µs after a read request the EO board sends **one start bit (0), then th
 
 | Chip.reg | Name | Meaning / values |
 |---|---|---|
-| 0.DAC0–DAC3 | Condenser | Computed by Optibeam from aperture, WD, magnification (e.g. 45 / 182 / 23 / 218 at 50 µm, 49 / 128 / 21 / 251 at 30 µm) |
+| 0.DAC0–DAC3 | Condensers | C1 coarse / fine, C2 coarse / fine. Current I = ((coarse << 8) + fine + 2048) / 1048575 × 3 A. Computed by Optibeam from kV, probe current, aperture and WD (not magnification); e.g. 1012 / 224 / 941 / 151 at 20 kV, WD 20 mm, 200 pA, 50 µm. §5.6 |
 | 0.DAC4, 1.DAC3 | "Pair A" | 2047 running, **3070 frozen** (freeze on command / line end) |
 | 0.DAC5, 1.DAC2 | "Pair B" | 2047 running, **1024 acquisition stopped**; unfreeze passes 1024 → 2047 |
 | 0.DAC6 / DAC7 | Stigmator X / Y | 12-bit, centre ~2048. Step per click scales with magnification (Y 512 at 86×, X 67 at 10,000×). Y polarity inverted (UI + = lower code). Both always sent together |
 | 0.DAC8 / DAC9 | — | 2048 at boot, never seen changing |
-| 1.DAC0 / DAC1 | Objective coarse / fine | e.g. 62 / 2234. Focus (Optibeam: WD knob) changes DAC1 |
+| 1.DAC0 / DAC1 | Objective coarse / fine | I = ((coarse << 8) + fine) / 1048575 × 3 A (fine is centred on 2048). E.g. 1074 / 2283 at 20 kV, WD 20 mm. Focus = WD; fine changes for small steps |
 | 1.r00–r0A, routing, control | Wobble generator | §5.9 |
 | 1.DAC4–DAC7 | — | 128 at boot, never seen changing |
 | 1.DAC8, 1.r1B | — | Always 0 (sent in the beam-position block) |
@@ -226,74 +226,16 @@ Y → coil A = 32768 + T·M·gA·sin(θ + 45°)            Y → coil B = 32768 
 - Shift is rotated by the same angle as the scan: at 86× X+ = (−11, +8), Y+ = (+7, +9) counts per click. UI X+ is opposite to scan +X; Y+ is along scan +Y.
 - Sent inside the **beam-position block**: chip 1 DAC8 = 0, pair A, chip 1 r1B = 0, pair B, chip 2 DAC3 ×4, chip 3 DAC1, then the four coil weights.
 
-### 5.6 Focus, working distance, Optibeam, aperture **[C]**
-- All lens writes are read-modify-write: read chip control + routing (F4), then write the DACs ~0.94 ms apart.
-- **Focus** (with Optibeam on, the WD knob): chip 1 DAC1 (objective fine) changes (2230 → 2234 per fine click at 86×), then the four coil weights are recomputed (scan amplitude and rotation follow the objective). The lens + weights block repeats every ~110 ms for a short while after a change.
-- **WD typed in / login:** chip 0 DAC0–3 and chip 1 DAC0–1 are rewritten (several intermediate steps), weights recomputed (e.g. 10 → 15 mm: −23 % magnitude, ~8° rotation).
-- **Optibeam** is a host mode: off sends nothing; on recomputes and re-sends chip 0 DAC0–3 (condenser), the weights and the objective.
-- **Aperture** change (Optibeam on): new condenser values, weights, then an objective correction (2234 → 2262 at 50 → 30 µm, 10,000×).
-- **Probe current** (beam on, 20 kV): the same lens block. Condenser DAC0 falls monotonically with current (1111 / 1035 / 938 / 827 at 50 / 300 / 500 / 1000 pA); DAC0/1 and DAC2/3 behave as two coarse / fine pairs; the objective is refocused each time (fine 2095–2256) and the weights follow by tens of counts.
-- **Depth mode** swaps condenser strength between the pairs (DAC0 ~1035 → 205, DAC2 ~254 → 1116); **auto resolution** is a smaller condenser change. Both are host-side Optibeam calculations.
-- The Optibeam condenser values are a calibration function of kV, probe current, aperture, WD and magnification inside LEO-32; only sample points are known. A replacement needs its own lens calibration.
-
-### 5.7 Dynamic focus **[C]**
-- Enable (non-zero angle): read chip 1 DAC0 / DAC1, then **write chip 1 DAC1 once per line, ~22 µs after the Y write**.
-- **DAC1 = focus + k·(Y − 32768)**; at 30°, 86×: DAC1 = 2087.3 + 0.004465·Y (centre = focus value, ±146 counts over the frame). Slope ∝ tan(angle) × scan size **[I]**.
-- At 0°: only the weights are re-sent. Off: the per-line writes stop.
-
-### 5.8 Scan modes **[C]**
-- **Reduced area (window):** ramp set-up sent twice (old values, then new): X r00 = 16895, r08 = 512, r01 = 116; Y r00 = 16639, r08 = 384, r01 = 252; chip 2 DAC1 = ~1088; then the speed block. Same pixel pitch as full frame, central half of each axis. Line period 2.811 → 1.736 ms at speed 5 (800 instead of 1296 clocks per divider unit).
-- **Line scan:** chip 3 r00 = line Y position (e.g. 16219), r08 = 10, r01 = 6; the per-line Y write stays at the line position; X keeps scanning; F1 and F2 held high.
-- **Spot:** chip 2 control 0 → options 1, routing 4, r0A 1, control 0x8422, DAC1 41, chip 4 DAC4 = 1, r0A 15, then **chip 2 DAC4 = X position, chip 3 DAC4 = Y position** (16-bit, e.g. 16895 / 16639 ≈ 25 %); per-line writes stop.
-- **Return to full frame:** full ramp set-up (X r00 1023 / r08 1024 / r01 232; Y r00 511 / r08 768 / r01 504), speed block (options 9 or range | 8, routing 8, slope, r0A, control 0x8402), chip 2 DAC1 110, chip 4 DAC4 0.
-- **External scan:** centring offsets → 2048; read then clear chip 3 options bit 3 (252 → 244). Off reverses it. Signal path: §1.1.
-- **Split scan / dual magnification:** X r08 = 512, r01 = 116 with X r00 = 1023 (full-frame start), chip 2 DAC1 = 1116; Y unchanged (768 lines). Line period 1.736 ms at speed 5. The two halves of the display are built by the IP board.
-- **Line averaging (N):** **chip 3 r0A = N − 1**: each Y position is scanned on N consecutive lines. Writing chip 3 r0A also **restarts the frame** (this is the "chip 3 r0A = 0" at the end of every speed / mode block).
-- **Frame averaging / frame integration:** only a frame restart (chip 3 r0A = 0); the averaging is in the IP frame store.
-- **Auto-stigmation (autofocus + autostig, several seconds):** small centred window (256 × 128 points, X r00 24831, Y r00 27391), speed-2 settings, range change, objective rewrite, then stigmator steps of ±1000–1500 counts; the rest of the algorithm was not captured. A replacement implements its own image-based autofocus / autostig.
-- Capture is fixed at 1024 × 768 by the IP frame store and software, not by the EO board (16-bit start / step / count registers).
-
-### 5.9 Focus wobble **[C]**
-Chip 1's ramp generator swings the objective fine value around the focus value `F` (chip 1 DAC1) with amplitude `A`:
-
-| chip 1 reg | Value |
-|---|---|
-| control | 0 (stop) first |
-| r00 | **F − A** |
-| r01 = r02 | step: **A** (fast) or **A/2** (slow) |
-| r03–r06 | 0 |
-| r07 | 1 |
-| r08 = r09 | ticks per step: **2** (fast) or **4** (slow) |
-| r0A | 1 |
-| routing | 1 |
-| control | **0x8063** (run) |
-
-- Written ~0.94 ms apart. Slow has ~4× the period of fast.
-- A scales with the amplitude setting and inversely with magnification: at 10,000× A = 5 counts per % (10 % → 50, 50 % → 250); at 86× A is clamped at 766 for every setting.
-- The software also switches to the reduced-area window while wobbling.
-- **Off:** chip 1 control = 0, chip 1 DAC1 = F, then full frame restored.
-- Changing magnification while wobbling re-sends the wobble with the new A.
-
-### 5.10 Freeze **[C]**
-Sent as the beam-position block (pairs A and B, §4):
-
-| Action | Pair A | Pair B | Effect |
-|---|---|---|---|
-| Freeze on command / on line end | 2047 → 3070 | 2047, then 1024 (~1.7 ms) | identical on the link; Y ramp continues to frame end, then parks at 511 |
-| Freeze on frame end | unchanged | unchanged | nothing immediate; freeze at the end of the frame |
-| Unfreeze | 2047 | 1024, then 2047 (~2–3 ms) | frame restart, Y ramp restarts |
-
-These look like 3-level control signals rather than analog settings **[I]**. **No beam blanking was found** on this link: the beam keeps scanning to the end of the frame in every freeze mode.
-
-### 5.11 Boot and start-up sequences **[C]**
-1. **Windows start ("waiting for LEO")** and **LEO-32 UI start** send the same reset burst (59 writes, 23 µs apart):
-   - routing 15 / options 32 / control 0 on chips 0 and 1;
-   - chip 2 / chip 3 r07, r0A, control and routing 0 (chip 3 routing 4);
-   - **chip 4**: r00 0, r01 1, r02 1, r07 0, r08 255, r09 255, r0A 0, control 0x8403;
-   - all DACs to defaults: chip 0 DAC0–3 = 0, DAC4–9 = 2048; chip 1 DAC0–1 = 0, DAC2–3 = 2048, DAC4–7 = 128, DAC8–9 / r1A / r1B = 0; chip 2 DAC0 0, DAC1–3 2048, DAC5–6 32768; chip 3 DAC0–1 2048, DAC2 0, DAC3 2048, DAC4–6 32768, DAC7–8 0.
-
-   Then the ramp set-up (chip 2 r08 1024, r02 62, r00 1023; chip 3 r08 768, r09 128, r02 84, r01 504, r00 385 or 511), a read of chip 2 control, and speed 5. **The coil weights stay at 32768**: a timed raster with zero deflection.
-2. **Login:** beam-position block (running values), the saved coil weights, then a series of lens read-modify-writes (chip 0 DAC0–3, chip 1 DAC0–1), each followed by a weight update, for several seconds.
+### 5.6 Lenses: focus, working distance, Optibeam, aperture, kV **[C]**
+- All lens writes are read-modify-write: read chip control + routing (F4), then write the DACs ~0.94 ms apart. Each lens update is one block: condensers (chip 0 DAC0–3), coil weights, objective (chip 1 DAC1 / DAC0, usually twice).
+- **LEO-32 computes the lenses from the EHT read-back, not the setpoint.** With the beam off that read-back is 0 V, which its column model clamps to 100 V. Every lens value captured with the beam off (objective coarse ≈ 34–76: the `ctl*` tests, login, and the "trip" event `beam_05`) is such a 100 V state. Changing the kV setpoint with the beam off sends nothing; turning the beam on sends a full lens update.
+- **Focus = WD.** The focus knob changes the objective excitation and the displayed WD follows; typing a WD sets the objective. At 20 kV the objective coarse goes 1632 / 1355 / 1074 / 833 / 606 at displayed WD 5 / 10 / 20 / 40 / 100 mm. LEO-32 rescales the displayed WD before using it (internal WD ≈ (WD − 1.9 mm) / 1.22).
+- **Optibeam** is a host mode: off sends nothing; on recomputes and re-sends the lens block. LEO-32's UI modes: **Normal** (best resolution for the probe current), **Depth** (C2 at its strongest, ≈ 2260 coarse at 20 kV, ≈ 1115 at 5 kV; only C1 moves with current) and **Auto resolution** (LEO-32 picks the probe current: 150 / 90 / 70 / 50 pA at 20 / 10 / 5 / 2 kV, then computes as Normal). At low current or short WD, Normal lands on the Depth solution.
+- **Probe current** (20 kV, WD 20 mm, 50 µm): C1 / C2 coarse 927 / 2240 (10 pA), 840 / 1311 (100 pA), 1012 / 941 (200 pA), 1048 / 692 (1 nA), 666 / 561 (100 nA). The objective barely moves (1073–1081).
+- **Aperture** (software entry; LEO-32 offers 30 and 50 µm): large effect, e.g. C1 1011 → 1944 at 200 pA for 50 → 30 µm.
+- **kV:** the whole lens block is recomputed after each EHT change (first update within 3 counts of the settled value). The objective scales with √(relativistic kV); the condensers do not, because Optibeam re-solves them for the gun brightness at the new kV.
+- **Magnification** sends no lens writes. Lens states repeat to within a few counts after any sequence of changes (no hysteresis).
+- The full data set (140 steps) is `analysis/optics/eo_capture_2026-11-15.csv`. The column model that reproduces it (objective within 1.6 counts rms, condensers within about 3–9 % of the lens current) is `ELECTRON_OPTICS_MODEL.md` §13, implemented in the control-box firmware (`optics.cpp`).
 
 ## 6. Requirements for a replacement host
 
@@ -305,14 +247,14 @@ These look like 3-level control signals rather than analog settings **[I]**. **N
 6. Use read-modify-write for lens DACs on chips 0 and 1 as the original does.
 7. Dynamic focus: add one objective-fine write per line, linear in Y.
 8. Focus wobble: program chip 1's ramp generator (§5.9); restore DAC1 on stop.
-9. On every EHT change (after the ramp settles): rescale the objective and the coil weights by √(relativistic kV), recompute the condenser, re-pick the range. Keep the angles.
-10. Provide a lens calibration (condenser / objective vs kV, probe current, aperture, WD) to replace Optibeam.
+9. On every EHT change (after the ramp settles): rescale the coil weights by √(relativistic kV), recompute all lenses, re-pick the range. Keep the angles.
+10. Compute the lenses with a column model (condensers and objective from kV, WD, probe current, Optibeam mode and aperture): `ELECTRON_OPTICS_MODEL.md` §13, done in the control-box firmware.
 11. Interlock with the EHT / vacuum side as specified in `REPLACEMENT_REQUIREMENTS.md`.
 
 ## 7. Open items
 
 - kV compensation: **resolved** (§5.3); it only happens with the beam on.
-- Which chip-0 pair drives C1 and which C2; A / B coil pins; external-scan path (§1.1 tests).
+- C1 = chip 0 DAC0/1, C2 = DAC2/3: **resolved** from the software and the optics captures (§1.1, §5.6). Still open: lens connector pins, A / B coil pins, external-scan path (§1.1 tests).
 - Wobble amplitude at 100 % / 10,000× (expected A ≈ 500); the dependence of A on WD.
 - Exact meaning of r01 / r07 / r09 / r0A on chips 2 and 3, and of chip 4's registers.
 - Meaning of pairs A / B (acquisition-control lines?) and of F1 / F2 (gates?): confirm with the IP-side frame store.
@@ -322,7 +264,7 @@ These look like 3-level control signals rather than analog settings **[I]**. **N
 
 ## 8. Sources
 
-- Test log with every capture: `scope_tools/SCAN_FIBER_NOTES.md`.
+- Test log with every capture: `scope_tools/SCAN_FIBER_NOTES.md`; optics session 2026-11-15: `scope_tools/EO_OPTICS_TEST_PLAN.md` §7 and `analysis/optics/eo_capture_2026-11-15.csv` (captures `opt_*`).
 - Captures: `scope_captures/` (`coldboot_*`, `ctl_*`, `ctl2_*`, `ctl3_*`, `ctl4_*`, `spd_*`, `kv_*`, `beam_*`, `beam2_*`, `t1`–`t13`, surveys). Each has `.npz`, `_ch3.txt` (decoded) and, for the loop captures, a wall-clock `*_log.txt`.
 - Timing diagram: `scope_captures/scan_fiber_timing.png`.
 - Tools: `scope_tools/cold_boot_loop.py` (re-arming capture loop), `decode_scan_fiber.py`, `arm_burst.py`, `scope_setup.py`.

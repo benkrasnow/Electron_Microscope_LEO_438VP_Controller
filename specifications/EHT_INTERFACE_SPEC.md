@@ -4,7 +4,7 @@
 |---|---|
 | Subsystem | EHT set, unit ID `M08`: accelerating voltage, thermionic tungsten filament, emission-current regulation, SE collector bias, photomultiplier (PM) high voltage, detector/scintillator supplies |
 | Host in the original system | ISA image-processor board, TMS34020 GSP, 16550 UART A at GSP address 0x60300000 (module `g100.440`) |
-| Revision | 1.0, 2026-11-12 |
+| Revision | 1.1, 2026-11-15: read-back and filament-type notes from the optics work (§4, §8) (1.0 2026-11-12) |
 | Basis | Live captures (cold boot, pump-down, beam on/off, adjustments, EHT off, VP, kV sweep, comms loss), plus disassembly of `g100.440` and LEO-32 |
 
 Confidence markers used below: **[C]** confirmed by capture, **[F]** taken from the original firmware or software but not seen on the wire, **[I]** inferred and needing verification.
@@ -75,7 +75,7 @@ A host should treat any `RR` other than `00` / `20` as "command not applied".
 | `.B` | 3 hex | **Emission current setpoint** | `µA × 10` | 400 µA `FA0` · 375 µA `EA6` · 350 µA `DAC` · off `000` | **[C]** |
 | `.C` | 3 hex | **SE collector bias** | `2048 + 5 × V` (signed, 0.2 V/count) | +300 V `DDC` · +100 V `9F4` · 0 V `800` | **[C]** |
 | `.1` `.2` `.3` | 3 hex | **PM high voltage**, detector channels 1–3 | 12-bit, scale unconfirmed | default `190`; brightness moves `.1` between `3CA` and `EB0` | **[C]** encoding **[I]** scale |
-| `.T` | 1 hex | Filament type | | `1` (tungsten) | **[C]** |
+| `.T` | 1 hex | Filament type | | `1` (tungsten) | **[C]**. LEO-32 apparently passed the same index to its column model, where gun table 1 is LaB6; that is why its probe-current calculation used LaB6 data on this tungsten machine **[I]** (`ELECTRON_OPTICS_MODEL.md` §6.7) |
 | `.A` | 1 hex | Anode type | | `1` | **[C]** |
 
 On this system only channel 1 (`.1`) is used. The SE / VPSE switchbox relays route the active PM to channel 1. Image **contrast** does not use this link; it is the scintillator amplifier gain on the image-processor side.
@@ -229,6 +229,7 @@ EHT on again: `.O0F07  .BFA0  .O0F07  .E008  .E1F2  .F994`. The filament is stil
 - Reply codes `RR` other than `00` / `20` / `24`.
 - Individual meaning of `.O` bits 0x0002, 0x0004, 0x0400.
 - PM voltage scale for `.1`–`.3`.
+- **Read-back.** `g100.440`'s command table has `eht_readback` (entry 27) and `toggle_readback` (30), and `_ProcEHTCmds` parses `?` replies, but no read-back query was seen on the link in any capture. Whether the set reports measured kV / emission / filament is open. The control box therefore shows the values it has sent (`eht.kvout`, `eht.emisout`, `eht.fil`). LEO-32's lens model used the applied kV, 0 with the beam off.
 - Whether the set has its own comms watchdog when the beam is on.
 - A VP-mode `.O` word (`0B07`?) has not been captured, because LEO-32's VP controls are disabled on this machine.
 - Fiber transceiver part number and wavelength.

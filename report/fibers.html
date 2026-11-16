@@ -1,43 +1,23 @@
-<h3>The four EO fibers (confirmed hardware)</h3>
-<p class="prose">Your photo of the EO board shows <b>one HFBR-1521 transmitter (grey) and three HFBR-2521 receivers (blue)</b>, all HP/Agilent Versatile Link parts rated at 5 MBd. So three fibers run IP board → EO board and one runs EO → IP. The return fiber explains the busy-flag handshake and the register readback in the DSP code. The 5 MBd rating caps every signal on these fibers. A 5 MBd capture front-end (any logic analyser at ≥25 MS/s) is enough, and no pixel clock above about 5 MHz can be on them.</p>
+<h3>The four EO fibers (confirmed by capture)</h3>
+<p class="prose">The EO board has <b>one HFBR-1521 transmitter and three HFBR-2521 receivers</b> (HP/Agilent Versatile Link, 5 MBd). Captures of all four with a Tektronix MSO24 during a cold boot and while operating every LEO-32 control settled their roles. All are TTL idle high at the transceivers.</p>
 <figure>
 <div class="fig narrow">
-<svg viewBox="0 0 900 330" role="img" aria-label="Signals expected on the three inbound and one return EO fibers">
+<svg viewBox="0 0 900 330" role="img" aria-label="Captured roles of the three inbound and one return EO fibers">
   <defs><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrf"/></marker></defs>
   <rect x="20" y="20" width="250" height="290" class="grp"/><text x="32" y="42" class="t-head">IP board</text>
   <rect x="36" y="58" width="218" height="54" class="bx"/><text x="46" y="78" class="t-label">ADSP-21xx</text><text x="46" y="96" class="t-small t-muted">raster math, line IRQ, commands</text>
-  <rect x="36" y="128" width="218" height="46" class="bx"/><text x="46" y="148" class="t-label">Remote register port</text><text x="46" y="164" class="t-small t-mono">DM 0x3400+n · busy @0x37FF</text>
-  <rect x="36" y="190" width="218" height="46" class="bx"/><text x="46" y="210" class="t-label">SPORT1 SCLK (pixel clock)</text><text x="46" y="226" class="t-small t-mono">CLKOUT / 2^(rate−2)</text>
-  <rect x="36" y="252" width="218" height="46" class="bx"/><text x="46" y="272" class="t-label">Line/frame timing, ADC</text><text x="46" y="288" class="t-small t-muted">PMT digitised here</text>
+  <rect x="36" y="128" width="218" height="46" class="bx"/><text x="46" y="148" class="t-label">Remote register port</text><text x="46" y="164" class="t-small t-mono">serialised at 3.6864 Mbit/s</text>
+  <rect x="36" y="190" width="218" height="46" class="bx"/><text x="46" y="210" class="t-label">Frame / line timing</text><text x="46" y="226" class="t-small t-muted">acquisition gates</text>
+  <rect x="36" y="252" width="218" height="46" class="bx"/><text x="46" y="272" class="t-label">Video ADC, frame store</text><text x="46" y="288" class="t-small t-muted">PMT digitised here (coax)</text>
   <rect x="630" y="20" width="250" height="290" class="grp"/><text x="642" y="42" class="t-head">EO board</text>
-  <rect x="646" y="58" width="218" height="72" class="bx"/><text x="656" y="78" class="t-label">5 ramp-controller chips</text><text x="656" y="96" class="t-small t-muted">regs 0x00–0x8D + 0x90, 0x94</text><text x="656" y="112" class="t-small t-muted">HFBR-1521 TX · 3× HFBR-2521 RX</text>
-  <rect x="646" y="146" width="218" height="80" class="bxa"/><text x="656" y="166" class="t-label">X / Y ramp engines</text><text x="656" y="184" class="t-small t-muted">step per pixel clock,</text><text x="656" y="200" class="t-small t-muted">prescaler 0x4A for slow scans</text>
-  <rect x="646" y="242" width="218" height="56" class="bx"/><text x="656" y="262" class="t-label">Lens / stig / scan DACs</text><text x="656" y="280" class="t-small t-muted">12-bit and 16-bit outputs</text>
-  <path d="M254,151 L646,94" class="fib" marker-end="url(#ah4)"/><text x="380" y="110" class="t-small t-fiber">IN 1  register writes (addr+data), bursts</text>
-  <path d="M254,213 L646,186" class="fib" marker-end="url(#ah4)"/><text x="400" y="190" class="t-small t-fiber">IN 2  pixel clock, continuous</text>
-  <path d="M254,268 L646,210" class="fib" marker-end="url(#ah4)"/><text x="400" y="252" class="t-small t-fiber">IN 3  line/frame sync or bus clock</text>
-  <path d="M646,280 C520,300 460,320 254,292" class="fib" marker-end="url(#ah4)"/><text x="400" y="318" class="t-small t-fiber">OUT  ack / read data (HFBR-1521)</text>
+  <rect x="646" y="58" width="218" height="72" class="bx"/><text x="656" y="78" class="t-label">5 ramp-controller chips</text><text x="656" y="96" class="t-small t-muted">chip = n &gt;&gt; 5, register = n &amp; 31</text><text x="656" y="112" class="t-small t-muted">HFBR-1521 TX · 3× HFBR-2521 RX</text>
+  <rect x="646" y="146" width="218" height="80" class="bxa"/><text x="656" y="166" class="t-label">X ramp (own clock)</text><text x="656" y="184" class="t-small t-muted">Y written by the host</text><text x="656" y="200" class="t-small t-muted">once per line</text>
+  <rect x="646" y="242" width="218" height="56" class="bx"/><text x="656" y="262" class="t-label">Lens / stig / scan DACs</text><text x="656" y="280" class="t-small t-muted">C1, C2, objective: 20-bit over 3 A</text>
+  <path d="M254,151 L646,94" class="fib" marker-end="url(#ah4)"/><text x="350" y="110" class="t-small t-fiber">F3  register frames (32-bit), bursts</text>
+  <path d="M254,213 L646,186" class="fib" marker-end="url(#ah4)"/><text x="390" y="190" class="t-small t-fiber">F2  line gate, 550 µs per line</text>
+  <path d="M254,226 L646,210" class="fib" marker-end="url(#ah4)"/><text x="390" y="236" class="t-small t-fiber">F1  frame gate</text>
+  <path d="M646,280 C520,300 460,320 254,292" class="fib" marker-end="url(#ah4)"/><text x="400" y="318" class="t-small t-fiber">F4  read replies (start bit + 16 bits)</text>
 </svg>
 </div>
-<figcaption><b>Fig. 5</b> Fiber roles. The direction split (3 in, 1 out) is confirmed from the board photo. The register bus and pixel clock are strongly supported by the code; which inbound fiber carries which signal still has to be read off the capture.</figcaption>
+<figcaption><b>Fig. 4</b> Fiber roles as captured. The static analysis expected a pixel clock on one inbound fiber; there is none. Full frame format and register map: <code>SCAN_GENERATOR_INTERFACE_SPEC.md</code>.</figcaption>
 </figure>
-
-<h3>Capture decoding guide</h3>
-<p class="prose">Each register write should appear as one packet carrying a target (EO or HRRU), a 10-bit register number and a 16-bit value, followed by an acknowledge on the return fiber. A read sends the address and gets the value back on the return fiber. These UI actions should each produce a short, recognisable set of writes:</p>
-<div class="tbl"><table>
-<thead><tr><th>UI action</th><th>Registers that should change</th><th>Notes</th></tr></thead>
-<tbody>
-<tr><td>Power-up / SEM init</td><td>Init burst above (≈60 writes), then raster setup</td><td>Best reference for the packet format: known order and values</td></tr>
-<tr><td>Focus knob, one click</td><td class="num">0x31 (fine), sometimes 0x30</td><td>12-bit value moves by a small step</td></tr>
-<tr><td>Stigmator X / Y</td><td class="num">0x16 / 0x17</td><td>12-bit, mid-scale 0x800</td></tr>
-<tr><td>Spot size / probe current</td><td class="num">chip-0 ramp 0x00–0x0C, then 0x10–0x13</td><td>Condensers ramp smoothly through the ramp engine</td></tr>
-<tr><td>Gun alignment</td><td class="num">0x14, 0x15, 0x32, 0x33</td><td>Via DSP command 0x14</td></tr>
-<tr><td>Beam shift</td><td class="num">0x53, 0x71</td><td>MICRO1 values</td></tr>
-<tr><td>Magnification</td><td class="num">0x50, 0x72 (amplitude); 0x51, 0x73 (origin) on range change; 0x4D, 0x6D bits</td><td>Within one mag range only the amplitude should change</td></tr>
-<tr><td>Scan rotation</td><td class="num">0x55, 0x56, 0x75, 0x76</td><td>Expect sin/cos-like pairs</td></tr>
-<tr><td>Scan speed</td><td class="num">0x4B (stop) → 0x4A, 0x4C, 0x4D, 0x54, 0x94 → 0x4B (run)</td><td>Pixel-clock fiber frequency halves per step from rate 3</td></tr>
-<tr><td>Reduced raster / store resolution</td><td class="num">0x40–0x42, 0x47–0x49, 0x60–0x62, 0x68, 0x69, with 0x4B stop/restart</td><td>Check against the raster formulas below</td></tr>
-<tr><td>Spot mode</td><td class="num">0x54, 0x74</td><td>Fixed positions, ramp routing changed</td></tr>
-<tr><td>Focus wobble / stig wobble / dynamic stig</td><td class="num">chip-1 or chip-0 ramp + ctl 0x8043 / 0x8063 / 0x8632; 0x39</td><td>Ramp engine drives the output continuously; no per-step traffic</td></tr>
-<tr><td>Emission imaging</td><td class="num">0x0C←8, 0x2C←0xA, then gun-align writes</td><td>Chips 0/1 ramp the gun deflectors</td></tr>
-</tbody></table></div>

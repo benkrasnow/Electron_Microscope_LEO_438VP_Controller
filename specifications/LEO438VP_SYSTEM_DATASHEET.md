@@ -1,6 +1,6 @@
 # LEO 438VP Control System: Summary Datasheet
 
-*A readable overview of every control link and subsystem on the LEO 438VP SEM, written as the starting point for replacing the Win98 PC and its ISA image-processor (IP) board. Each section points to the detailed interface specification. Revision 1.0, 2026-11-13.*
+*A readable overview of every control link and subsystem on the LEO 438VP SEM, written as the starting point for replacing the Win98 PC and its ISA image-processor (IP) board. Each section points to the detailed interface specification. Revision 1.1, 2026-11-15: electron optics (§5, §6, §8) after the 2026-11-15 lens captures, and the replacement as built (§9). Revision 1.0, 2026-11-13.*
 
 ---
 
@@ -31,7 +31,7 @@
 | Stage / vacuum (STGVAC) | fiber, UART B | 9600 8N1 ASCII, `.XX args` CR LF | configure, poll, request pump / vent, command stage moves | `STAGE_VACUUM_INTERFACE_SPEC.md` |
 | EHT / gun supply (M08) | fiber, UART A | 9600 8N1 ASCII, `.X hex` CR | sequence and ramp everything; poll faults | `EHT_INTERFACE_SPEC.md` |
 | VP controller | RS-232 COM2 | 9600 8N1 ASCII, `XX a,b` CR LF | request state changes, set target, poll; keep its watchdog fed | `VP_CONTROLLER_INTERFACE_SPEC.md` |
-| EO board (scan + lenses) | 4 fibers | 3.6864 Mbit/s 32-bit register frames + 2 gate lines | compute and write every DAC; write Y every line | `SCAN_GENERATOR_INTERFACE_SPEC.md` |
+| EO board (scan + lenses) | 4 fibers | 3.6864 Mbit/s 32-bit register frames + 2 gate lines | compute and write every DAC (lenses from a column model); write Y every line | `SCAN_GENERATOR_INTERFACE_SPEC.md`, `ELECTRON_OPTICS_MODEL.md` |
 | Detector video | analog coax | analog | digitise into the frame store; contrast = amplifier gain | (to be characterised) |
 
 **Design principle shared by all subsystems:** every remote unit is a slave that holds its last setting. **All sequencing, ramps, calibration and safety ordering live in the host.** A replacement host must reproduce them.
@@ -131,7 +131,7 @@
                                                       │ tilt, kV, per-range calibration) │
                                                       └──────────────────────────────────┘
   chip 2 / 3  shift + centring DACs ──────────────────────────────────────────────────────► added to coil drive
-  chip 0  condenser DAC0-3 (two coarse/fine pairs) ──► lens drivers ──► C1, C2 (condensers)
+  chip 0  DAC0/1 C1, DAC2/3 C2 (coarse/fine pairs) ──► lens drivers ──► C1, C2 (condensers)
   chip 1  objective DAC0/1 (+ wobble ramp generator) ──► lens driver ──► C3 (objective)
   chip 0  stigmator X / Y (DAC6 / DAC7) ──────────────────────────────────► Stig (octupole)
   chip 1  DAC4-7 (8-bit) ──► gun alignment (not used: manual on this microscope)
@@ -145,7 +145,7 @@
 | Scan | X ramp in hardware; **host writes Y once per line**. Speed n: chip 2 r0A = 2^n − 1, line = (r0A + 1) × 87.9 µs (speed 5 = 2.81 ms). Speeds 10–15 step X point by point. 1024 points × 768 lines in the old system (the EO registers allow more) |
 | Magnification | four coil weights (16-bit, 32768 = 0) + 5 ranges, each ~8× apart; weight × magnification is constant within a range; most sensitive range with \|weight\| < 32767; park → range → wait 40 ms → weights |
 | Rotation / tilt / shift / kV | rotation matrix on the weights (coils at ~45° to the image); tilt = Y × cos(tilt); shift through the same rotation; weights and objective × √(relativistic kV) |
-| Lenses | condenser (chip 0 DAC0–3) from the Optibeam calculation (kV, probe current, aperture, WD, depth / resolution mode); objective fine = focus; dynamic focus = one objective write per line linear in Y; wobble = chip 1's own ramp generator |
+| Lenses | 20-bit current over 3 A per lens: coarse = code >> 8, fine = low byte. C1 = chip 0 DAC0/1, C2 = DAC2/3, objective = chip 1 DAC0/1. LEO-32's Optibeam computed all three from a paraxial column model: kV, displayed WD (focus = WD), probe current, mode (Normal / Depth / Auto resolution) and aperture entry; not magnification. Dynamic focus = one objective write per line linear in Y; wobble = chip 1's own ramp generator |
 | Modes | reduced area, line scan, spot, split scan, line averaging (chip 3 r0A = N − 1), external scan (select bit + neutral offsets), freeze (control levels) |
 | Start-up | fixed 59-write reset burst, ramp set-up, speed 5, weights at zero until a magnification is chosen |
 
@@ -157,7 +157,7 @@
 |---|---|
 | **Pump down** | STGVAC `.VL P` → VP `TO 3` (~1.5 s later) → wait for `SPVR` → re-send stage limits → EHT inhibit clears (`?S` = 0x48 → `.R` → restore settings) |
 | **Beam on** | require `SPVR` and EHT status 0x40 → EHT beam-on sequence (§3) → EO: lenses and weights for the new kV |
-| **Change kV** | EHT `.E` (ramped above 20 kV) → after it settles, EO: recompute condenser, objective (√kV), weights (√kV), range |
+| **Change kV** | EHT `.E` (ramped above 20 kV) → after it settles, EO: recompute the lenses (column model; objective ∝ √kV), weights (√kV), range. LEO-32 used the EHT read-back, so with the beam off it computed a 100 V column; the new box uses the settled setpoint |
 | **Vent** | beam off, **filament ramped to zero** → stage Z to 0.5 mm → STGVAC `.VL V` → at `NSP`: VP `TO 2`, at-air stage limits |
 | **Enter VP** | beam off, filament cooled → VP `MC`, `HP`, `TO 7` → state 9 → EHT scintillator off (0x0800) → beam on |
 | **Leave VP** | beam off, filament cooled → VP `TO 10` → state 4 → `TO 3` → scintillator back on |
@@ -173,7 +173,7 @@
 | One RS-232 port | VP controller (or a UART + level shifter) |
 | EO fiber link | 3.6864 Mbit/s serial transmitter for F3 (14.7456 MHz / 4), receiver for F4, F1 / F2 gate outputs, deterministic per-line Y writes ~27 µs after each F2 edge (a microcontroller timer / DMA or an FPGA) |
 | Video acquisition | analog video input from the detector coax with programmable gain (contrast) and offset, digitised in sync with the X ramp (pixel clock derived from the line timing); frame store / streaming to the PC |
-| Optics model | coil-weight calculation (magnification, range table, rotation, tilt, shift, kV, WD lens rotation); lens calibration to replace Optibeam |
+| Optics model | coil-weight calculation (magnification, range table, rotation, tilt, shift, kV, WD lens rotation); lens column model replacing Optibeam (`ELECTRON_OPTICS_MODEL.md` §13) |
 | Safety logic | filament-off before any pressure change; scintillator off in VP; kV and filament ramps; fault handling and re-send after resets; VP watchdog polling |
 
 ---
@@ -187,10 +187,20 @@ Open items that affect a replacement:
 - **F1 / F2:** confirmed timing, inferred meaning (acquisition gates).
 - **HRRU** (second target on the IP board's remote register bus) and any hardware knob panel: not yet investigated.
 - Fiber transceiver part numbers and wavelengths; IP board connector pinouts.
-- EO: C1 / C2 pair assignment, A / B coil pins, the external-scan path test, the meaning of a few constant registers.
+- EO: A / B coil pins, lens connector pins, the external-scan path test, the meaning of a few constant registers. (C1 / C2 assignment resolved.)
+- Optics: condenser agreement is a few % of lens current (objective near-exact); low-kV anode / spacer tables and LEO-32's VP lens behaviour were not captured (LEO-32 never knew when the column was in VP).
+- EHT: the GSP module has `eht_readback` / `toggle_readback` entries that LEO-32 never used in the captures; a real kV / emission read-back may exist.
 - EHT: fault bits 0x04 / 0x02, PM HV scale. VP: `HP a,b` formula, error codes.
 
-## 9. Document map
+## 9. The replacement as built (2026-11-15)
+
+| Part | What it does | Where |
+|---|---|---|
+| Control box (Teensy 4.0, PCB at fab) | EHT, stage / vacuum and EO fibers, VP RS-232; machine state and every safety rule; column model for the lenses; settings in flash | `hardware/leo_control_box/`, `firmware/leo_control/` |
+| Open Beam Interface (Glasgow) | imaging through the EO board's external scan input | existing OBI hardware, `webui/bridge.py` |
+| Operator web page | Chrome / Edge: box over Web Serial, OBI image through the bridge, LEO-32-style controls (focus = WD, probe current, Optibeam mode, aperture), developer tools | `webui/` |
+
+## 10. Document map
 
 | File | Content |
 |---|---|
@@ -198,6 +208,8 @@ Open items that affect a replacement:
 | `specifications/EHT_INTERFACE_SPEC.md` | EHT / gun supply, full command set and sequences |
 | `specifications/VP_CONTROLLER_INTERFACE_SPEC.md` | VP controller, full command set and sequences |
 | `specifications/SCAN_GENERATOR_INTERFACE_SPEC.md` | EO board, frame format, register map, every function |
+| `specifications/ELECTRON_OPTICS_MODEL.md` | LEO-32's column model (lens laws, Optibeam), the 2026-11-15 lens captures, and the firmware model |
 | `capture_tools/REPLACEMENT_REQUIREMENTS.md` | safety rules for the new controller |
-| `scope_tools/SCAN_FIBER_NOTES.md`, `capture_tools/*_PROTOCOL.md` | test logs behind the specs |
+| `scope_tools/SCAN_FIBER_NOTES.md`, `scope_tools/EO_OPTICS_TEST_PLAN.md`, `capture_tools/*_PROTOCOL.md` | test logs behind the specs |
+| `firmware/PROTOCOL.md`, `firmware/SETTINGS.md` | control box USB protocol and settings |
 | `report/leo438vp_report.html` | static analysis of the original software |

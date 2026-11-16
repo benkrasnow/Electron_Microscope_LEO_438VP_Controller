@@ -13,7 +13,7 @@
 <div class="tbl"><table>
 <thead><tr><th>Register</th><th>Function</th><th>Written by</th></tr></thead>
 <tbody>
-<tr><td class="num">0x10 / 0x11</td><td><b>C1 condenser</b> (two 12-bit DACs, likely coarse/fine)</td><td><code>_gsp_set_condenser_lens_current</code> via chip-0 ramp; read by <code>_gsp_get_C1C2_setting</code></td></tr>
+<tr><td class="num">0x10 / 0x11</td><td><b>C1 condenser</b>: coarse / fine of one 20-bit current over 3 A (confirmed by capture, §9)</td><td><code>_gsp_set_condenser_lens_current</code>, written directly; read by <code>_gsp_get_C1C2_setting</code></td></tr>
 <tr><td class="num">0x12 / 0x13</td><td><b>C2 condenser</b></td><td>same</td></tr>
 <tr><td class="num">0x0D</td><td>C1 and C2 polarity bits (init 0x20)</td><td><code>_gsp_set_C1_lens_polarity</code>, <code>_gsp_set_C2_lens_polarity</code></td></tr>
 <tr><td class="num">0x14 / 0x15, 0x32 / 0x33</td><td><b>Gun alignment</b> (GUN1[0]→0x14, GUN1[3]→0x15, GUN1[2]→0x32, GUN1[1]→0x33)</td><td>DSP cmd 0x14 from DPRAM GUN1/GUN2</td></tr>
@@ -46,4 +46,4 @@
 30,31←0000 (C3 off)  32,33←0800  34..37←0080  38..3B←0000
 50←0000 (X amplitude 0)  51..53←0800  55,56←8000
 70,71←0800  72←0000 (Y amplitude 0)  73←0800  74..76←8000
-<span class="c">; then cmd 0x23 (FCF limits); register auto-increments after each write, so consecutive registers share one setup</span></pre>
+<span class="c">; then cmd 0x23 (FCF limits); the DSP post-increments the register number, so consecutive registers are written back-to-back</span></pre>

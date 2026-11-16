@@ -105,9 +105,10 @@ footer{margin-top:56px;padding-top:14px;border-top:2px solid var(--fg);font-size
 
 <div class="wrap">
 <header class="top">
-  <div class="docid"><span>Reverse-engineering report · Stage 1</span><span>Instrument: LEO 438VP s/n 438VP-38-39</span><span>Source: Win98 C: drive image</span></div>
+  <div class="docid"><span>Reverse-engineering report · Stage 1, updated 15 Nov 2026</span><span>Instrument: LEO 438VP s/n 438VP-38-39</span><span>Source: Win98 C: drive image</span></div>
   <h1>LEO 438VP control computer: how LEO-32 talks to the ISA image-processor board and the fiber links</h1>
   <p class="lede">A static analysis of the drive image, done without running any code. It traces the path from the LEO-32 user interface down to the bytes on the fiber-optic serial links, lists every command table that survived in the binaries, and proposes a staged plan for replacing the Win98 PC and its custom ISA board.</p>
+  <div class="note acc"><b>Update, 15 November 2026.</b> Stage 2 (path A in §12) is done. Every link has since been captured on the scope or with a serial logger and written up as an interface specification: EHT, stage / vacuum, VP, and the four EO fibers. LEO-32's electron-optics model was decompiled, run in an emulator, and fitted to about 130 lens states captured on 15 November (§9). The replacement (path C) is being built: a Teensy 4.0 control box, the Open Beam Interface for imaging, and a browser control page. The static analysis below is kept as written; boxes like this one and the confidence tags mark what the captures confirmed or corrected. Specifications: <code>specifications/</code>, starting with <code>LEO438VP_SYSTEM_DATASHEET.md</code>.</div>
   <ul class="toc">
     <li><a href="#summary"><span>1</span>Key findings</a></li>
     <li><a href="#system"><span>2</span>System architecture</a></li>
@@ -117,10 +118,11 @@ footer{margin-top:56px;padding-top:14px;border-top:2px solid var(--fg);font-size
     <li><a href="#commands"><span>6</span>Command tables</a></li>
     <li><a href="#links"><span>7</span>Fiber / serial links</a></li>
     <li><a href="#dsp"><span>8</span>Scan generator path</a></li>
-    <li><a href="#other"><span>9</span>Other interfaces</a></li>
-    <li><a href="#notable"><span>10</span>Notable findings on this install</a></li>
-    <li><a href="#paths"><span>11</span>Replacement paths</a></li>
-    <li><a href="#evidence"><span>12</span>Evidence index</a></li>
+    <li><a href="#optics"><span>9</span>Electron optics (lenses)</a></li>
+    <li><a href="#other"><span>10</span>Other interfaces</a></li>
+    <li><a href="#notable"><span>11</span>Notable findings on this install</a></li>
+    <li><a href="#paths"><span>12</span>Replacement paths</a></li>
+    <li><a href="#evidence"><span>13</span>Evidence index</a></li>
   </ul>
 </header>
 
@@ -129,7 +131,9 @@ footer{margin-top:56px;padding-top:14px;border-top:2px solid var(--fg);font-size
   <div class="kf"><span class="tag">The board</span><b>A TMS34020 graphics processor is the real controller</b><p>The ISA card is the Cambridge/Leica "Stereoscan Image Processor": a TI TMS34020 GSP running the TIGA graphics manager plus LEO's own multitasking kernel and ten loadable modules. The PC never touches the fiber links directly. It sends TIGA function calls to the GSP, and GSP code drives the links.</p></div>
   <div class="kf"><span class="tag">ISA resources</span><b>I/O 0xA300–A301 page registers + 32 KB memory window at D000:0000</b><p>Each GSP address is reached by writing bits 31–18 to two page registers and then doing a 16-bit access in the D0000h window. Probably IRQ 9 for GSP→host interrupts.</p></div>
   <div class="kf"><span class="tag">Fiber links 1 &amp; 2</span><b>Two 16550-type UARTs, 9600 baud 8N1, ASCII "dot commands"</b><p>UART A (GSP 0x60300000) talks to the EHT/gun supply. UART B (0x60380000) talks to a combined Stage/Vacuum comms CPU. Commands look like <code>.SX</code>, <code>.VL</code>, <code>.B</code>, terminated by CR/LF.</p></div>
-  <div class="kf"><span class="tag">Scan / optics</span><b>An ADSP-21xx DSP programs a remote raster engine</b><p>The DSP sends start/step/count/flyback values for X and Y, plus all lens and stig set-points, over a 10-bit remote register bus. It derives the pixel clock from its SPORT1 clock pin, halving it per scan-rate step. X/Y samples are not streamed from the PC (§8).</p></div>
+  <div class="kf"><span class="tag">Scan / optics</span><b>An ADSP-21xx DSP programs a remote raster engine</b><p>The DSP sends start/step/count/flyback values for X and Y, plus all lens and stig set-points, over a 10-bit remote register bus. X/Y samples are not streamed from the PC (§8). <i>Captured since:</i> the bus is a 3.6864 Mbit/s fiber of 32-bit register frames with a reply fiber; the other two fibers are frame / line gates, not a pixel clock. The X ramp runs from the EO board's own clock.</p></div>
+  <div class="kf"><span class="tag">Electron optics</span><b>LEO-32 computes every lens from a column model</b><p>Condensers and objective come from kV, WD, probe current, Optibeam mode and aperture (not magnification). The model was decompiled from <code>g200.440</code>, fitted to 130 captured lens states and ported to the new controller: objective within 1.6 DAC counts rms, condensers within a few % (§9).</p></div>
+  <div class="kf"><span class="tag">Replacement</span><b>Path C is under way</b><p>A Teensy 4.0 control box drives the EHT, stage / vacuum, VP and EO links and enforces the interlocks. The Open Beam Interface does the imaging, and a browser page replaces LEO-32. The PCB is at the fab (§12).</p></div>
   <div class="kf"><span class="tag">Symbols</span><b>The GSP modules still carry their symbol tables</b><p>Every function and global in the ~3 MB of GSP code is named (<code>_InitEHTUART</code>, <code>_send_stage_command</code>, <code>_DSPISR</code>…). This makes full decompilation practical.</p></div>
   <div class="kf"><span class="tag">Health</span><b>The machine is logging EHT-link timeouts</b><p>The live log (to 15 Jul 2026) has 95 "EHT set comms timeout" events, two "Filament Blown" errors and repeated Penning-gauge warnings. The EHT fiber link is the first one to scope.</p></div>
 </div>
@@ -206,7 +210,7 @@ footer{margin-top:56px;padding-top:14px;border-top:2px solid var(--fg);font-size
   <rect x="328" y="482" width="340" height="62" class="bx2"/>
   <text x="338" y="502" class="t-label">Fiber transceivers (≈6 links reported)</text>
   <text x="338" y="520" class="t-small t-muted">UART A/B + 4 plastic fibers to the scan generator:</text>
-  <text x="338" y="535" class="t-small t-muted">register bus, pixel clock, sync (see §8)</text>
+  <text x="338" y="535" class="t-small t-muted">register frames, read replies, frame / line gates (§8)</text>
 
   <!-- Column -->
   <rect x="740" y="40" width="286" height="520" class="grp"/>
@@ -251,7 +255,7 @@ footer{margin-top:56px;padding-top:14px;border-top:2px solid var(--fg);font-size
   <text x="694" y="98" class="t-small t-fiber">fiber</text>
 </svg>
 </div>
-<figcaption><b>Fig. 1</b> System block diagram. Solid boxes are confirmed from software; the split of the remaining fiber links between EO/scan and detector video is inferred and should be checked on the hardware. Dotted line: VP controller on PC COM2.</figcaption>
+<figcaption><b>Fig. 1</b> System block diagram. Solid boxes are confirmed from software. Captures since confirmed the links: two 9600-baud UART fibers (EHT, stage / vacuum), four EO fibers (register frames, read replies, frame and line gates), and detector video on coax, not fiber. Dotted line: VP controller on PC COM2.</figcaption>
 </figure>
 
 <h2 id="stack"><span class="sn">3</span>Software stack</h2>
@@ -390,7 +394,7 @@ MOVB  0x08 → *A0(128)   <span class="c">; MCR = OUT2 (IRQ enable)   [UART B us
 
 <h2 id="commands"><span class="sn">6</span>Command tables (host → GSP)</h2>
 <p class="prose">Every <code>TIGASEM.DLL</code> export is a thin stub that pushes its arguments and issues one TIGA extended call. The command word is the module ID that TIGALNK assigned at load time, ORed with <code>0x4000</code> and the function's index in that module's <code>.TIGAEXT</code> table. Two spot checks agree: <code>READDPRAM</code> sends <code>id|0x4006</code>, and entry 6 of <code>g900.rlm</code> is <code>_cp_read_dpram</code>. <code>WRITEEO</code> sends <code>id|0x400B</code>, and entry 11 is <code>_cp_write_eo</code>. The tables below are read from the relocation records of each module, so the index-to-function mapping is exact.</p>
-<p class="prose">Entries 0 and 1 are usually the module's own init/entry point. These tables are also the natural API surface for a new host driver if the existing board is kept (path B in §11).</p>
+<p class="prose">Entries 0 and 1 are usually the module's own init/entry point. These tables are also the natural API surface for a new host driver if the existing board is kept (path B in §12).</p>
 <details class="cmd"><summary><code>g100.440</code><span class="host">M100.DLL</span><span class="dsc">EHT / gun high-voltage supply (UART A link)</span><span class="cnt">32 entries</span></summary><ol class="ext"><li><span class="ix">0</span>eht_init</li><li><span class="ix">1</span>eht_init</li><li><span class="ix">2</span>eht_status</li><li><span class="ix">3</span>eht_ramp</li><li><span class="ix">4</span>fil_ramp</li><li><span class="ix">5</span>kill_ramps</li><li><span class="ix">6</span>eht_descr</li><li><span class="ix">7</span>anode_type</li><li><span class="ix">8</span>fil_type</li><li><span class="ix">9</span>beam_i</li><li><span class="ix">10</span>set_fil_i</li><li><span class="ix">11</span>set_accel_v</li><li><span class="ix">12</span>collector_bias</li><li><span class="ix">13</span>pm_v</li><li><span class="ix">14</span>suspend_eht</li><li><span class="ix">15</span>supply_toggle</li><li><span class="ix">16</span>scint_toggle</li><li><span class="ix">17</span>fil_calib</li><li><span class="ix">18</span>eht_offset</li><li><span class="ix">19</span>ext_ramp</li><li><span class="ix">20</span>supp_ramp</li><li><span class="ix">21</span>lens_ramp</li><li><span class="ix">22</span>set_ext_v</li><li><span class="ix">23</span>set_supp_v</li><li><span class="ix">24</span>set_lens_v</li><li><span class="ix">25</span>FE_fil_calib</li><li><span class="ix">26</span>kill_FE_ramps</li><li><span class="ix">27</span>eht_readback</li><li><span class="ix">28</span>lens_wobble</li><li><span class="ix">29</span>beam_wobble</li><li><span class="ix">30</span>toggle_readback</li><li><span class="ix">31</span>direct_command</li></ol></details>
 <details class="cmd"><summary><code>g600.440</code><span class="host">M600.DLL</span><span class="dsc">Vacuum, airlock, EDX/WDX valves, chamber scope (Stage/Vac UART B link)</span><span class="cnt">31 entries</span></summary><ol class="ext"><li><span class="ix">0</span>vac_init</li><li><span class="ix">1</span>v_status</li><li><span class="ix">2</span>vac_init</li><li><span class="ix">3</span>v_fp_conf</li><li><span class="ix">4</span>v_vw_conf</li><li><span class="ix">5</span>v_sp_state</li><li><span class="ix">6</span>v_conf</li><li><span class="ix">7</span>v_state</li><li><span class="ix">8</span>v_ci_conf</li><li><span class="ix">9</span>v_edx_conf</li><li><span class="ix">10</span>v_wdx_conf</li><li><span class="ix">11</span>v_wdx_state</li><li><span class="ix">12</span>v_air_conf</li><li><span class="ix">13</span>v_edx_thresh</li><li><span class="ix">14</span>v_qbsd_quad</li><li><span class="ix">15</span>v_qbsd_vis</li><li><span class="ix">16</span>v_qbsd_gain</li><li><span class="ix">17</span>v_scm_range</li><li><span class="ix">18</span>v_scm_req</li><li><span class="ix">19</span>v_data_req</li><li><span class="ix">20</span>v_data_status</li><li><span class="ix">21</span>v_data_read</li><li><span class="ix">22</span>v_data_write</li><li><span class="ix">23</span>v_vac_id</li><li><span class="ix">24</span>v_comms_id</li><li><span class="ix">25</span>v_tilt0_conf</li><li><span class="ix">26</span>v_touch_off</li><li><span class="ix">27</span>v_scm_reading</li><li><span class="ix">28</span>v_comms_psu</li><li><span class="ix">29</span>vac_suspend</li><li><span class="ix">30</span>fe_v_status</li></ol></details>
 <details class="cmd"><summary><code>g500.rlm</code><span class="host">M500.DLL</span><span class="dsc">Stage (Stage/Vac UART B link)</span><span class="cnt">35 entries</span></summary><ol class="ext"><li><span class="ix">0</span>stg_init</li><li><span class="ix">1</span>stg_init</li><li><span class="ix">2</span>s_status</li><li><span class="ix">3</span>s_set_data</li><li><span class="ix">4</span>s_conf</li><li><span class="ix">5</span>s_man_init</li><li><span class="ix">6</span>s_auto_init</li><li><span class="ix">7</span>s_luser</li><li><span class="ix">8</span>s_ulimit</li><li><span class="ix">9</span>s_speed</li><li><span class="ix">10</span>s_position</li><li><span class="ix">11</span>s_backlash</li><li><span class="ix">12</span>s_vector</li><li><span class="ix">13</span>s_start</li><li><span class="ix">14</span>s_inc</li><li><span class="ix">15</span>s_tstep</li><li><span class="ix">16</span>s_back_speed</li><li><span class="ix">17</span>s_back_dist</li><li><span class="ix">18</span>s_max_speed</li><li><span class="ix">19</span>s_axis_id</li><li><span class="ix">20</span>s_abort</li><li><span class="ix">21</span>s_check_psu</li><li><span class="ix">22</span>stg_suspend</li><li><span class="ix">23</span>s_xbacklash</li><li><span class="ix">24</span>s_ybacklash</li><li><span class="ix">25</span>s_zbacklash</li><li><span class="ix">26</span>s_tbacklash</li><li><span class="ix">27</span>s_rbacklash</li><li><span class="ix">28</span>stage_motors_on_off</li><li><span class="ix">29</span>disable_touch_alarm</li><li><span class="ix">30</span>general_stage_cmd</li><li><span class="ix">31</span>force_status_read</li><li><span class="ix">32</span>set_rot_axis_limit_switch</li><li><span class="ix">33</span>set_protected_z_mode</li><li><span class="ix">34</span>get_stage_init_percent</li></ol></details>
@@ -403,19 +407,20 @@ MOVB  0x08 → *A0(128)   <span class="c">; MCR = OUT2 (IRQ enable)   [UART B us
 
 <h2 id="links"><span class="sn">7</span>Fiber and serial links</h2>
 <p class="prose">Two links are fully confirmed in software. The remaining fibers carry DSP-side traffic, and their framing is not visible in the PC files. The table marks what is known and what still needs a scope.</p>
+<div class="note acc"><b>Captured since (12–15 Nov).</b> Every link below has been recorded and decoded. The full command sets, encodings and sequences are in <code>EHT_INTERFACE_SPEC.md</code>, <code>STAGE_VACUUM_INTERFACE_SPEC.md</code>, <code>VP_CONTROLLER_INTERFACE_SPEC.md</code> and <code>SCAN_GENERATOR_INTERFACE_SPEC.md</code>. The table now shows the captured result.</div>
 <div class="tbl"><table>
 <thead><tr><th>Link</th><th>Endpoint</th><th>Physical / framing</th><th>Protocol</th><th>Confidence</th></tr></thead>
 <tbody>
-<tr><td>UART A</td><td>EHT unit ("EHT set")</td><td>16550, 9600 8N1, CR/LF lines</td><td>ASCII, <code>.</code>-prefixed single-letter commands, hex arguments, <code>?</code> queries</td><td><span class="conf c-hi">confirmed</span></td></tr>
-<tr><td>UART B</td><td>STGVAC comms CPU (stage + vacuum)</td><td>16550, 9600 8N1, RTS asserted</td><td>ASCII two-letter dot commands: <code>.S?</code> stage, <code>.V?</code>/<code>.C?</code>/<code>.T?</code>/<code>.Q?</code> vacuum, CR/LF</td><td><span class="conf c-hi">confirmed</span></td></tr>
-<tr><td>EO register bus</td><td>EO / scan generator board (lenses, stig, raster engine)</td><td>DSP remote register port, busy-flag handshake, target 0x40</td><td>10-bit address + 16-bit data writes; DSP commands 0x04/0x05/0x12 (§8)</td><td><span class="conf c-md">mechanism confirmed, wire format unknown</span></td></tr>
-<tr><td>Pixel clock / sync</td><td>Scan generator board</td><td>DSP SPORT1 SCLK, ÷2 per scan-rate step; line/frame timing</td><td>Continuous clock; far-end prescaler reg 0x4A for slow rates (§8)</td><td><span class="conf c-md">strongly inferred</span></td></tr>
+<tr><td>UART A</td><td>EHT unit ("EHT set")</td><td>16550, 9600 8N1, CR/LF lines</td><td>ASCII, <code>.</code>-prefixed single-letter commands, hex arguments, <code>?</code> queries. Decoded: <code>.E</code> kV, <code>.F</code> filament, <code>.B</code> emission, <code>.C</code> collector, <code>.1</code> PM HV, <code>.O</code> supply word, <code>?S</code> status</td><td><span class="conf c-hi">captured</span></td></tr>
+<tr><td>UART B</td><td>STGVAC comms CPU (stage + vacuum)</td><td>16550, 9600 8N1, RTS asserted</td><td>ASCII two-letter dot commands: <code>.S?</code> stage, <code>.V?</code>/<code>.C?</code>/<code>.T?</code>/<code>.Q?</code> vacuum, CR/LF; replies <code>=SS fields</code></td><td><span class="conf c-hi">captured</span></td></tr>
+<tr><td>EO register bus (F3 / F4)</td><td>EO / scan generator board (lenses, stig, raster engine)</td><td>F3: NRZ, idle high, 3.6864 Mbit/s, MSB first. F4: start bit + 16-bit reply ~5 µs after a read</td><td>32-bit frames <code>0 R n[12] value[16] 11</code>; chip = n &gt;&gt; 5, register = n &amp; 31; host writes Y once per line</td><td><span class="conf c-hi">captured</span></td></tr>
+<tr><td>Frame / line gates (F1 / F2)</td><td>Scan generator board</td><td>F1 high during frame flyback; F2 550 µs high at each line start</td><td>Acquisition gates, not a pixel clock: the X ramp runs from the EO board's own clock (chip 2 divider = 2<sup>n</sup>−1 for speed n)</td><td><span class="conf c-hi">captured</span> (meaning inferred)</td></tr>
 <tr><td>Detector video</td><td>PMT / detectors</td><td>Analogue into the IP board, digitised there (no fiber)</td><td>Zone gain/offset/mixing set by DSP commands 0x0C/0x0D</td><td><span class="conf c-hi">confirmed by owner</span></td></tr>
 <tr><td>COM2 (copper)</td><td>Orsay VP controller</td><td>PC serial port, <code>COM2:9600,n,8,1</code></td><td>ASCII: <code>RE 0</code>, <code>ST n,v</code>, <code>TO n</code>, <code>HP a,b,c</code>, <code>MC 100,900</code></td><td><span class="conf c-hi">confirmed</span></td></tr>
 </tbody></table></div>
 
 <h3>UART B: Stage/Vacuum command mnemonics</h3>
-<p class="prose">These literals sit in the <code>.data</code> sections of <code>g500.rlm</code> and <code>g600.440</code>. Each is sent as text with a trailing space and arguments, ended by <code>\r\n</code>. The stage module also carries the axis table <code>X 0 · Y 1 · Z 2 · T 3 · R 4 · M 5</code>. Meanings are not stored next to the strings, so the mapping still has to come from the code or from a capture.</p>
+<p class="prose"><i>Since decoded from captures: every command, reply and field is in <code>STAGE_VACUUM_INTERFACE_SPEC.md</code>.</i> These literals sit in the <code>.data</code> sections of <code>g500.rlm</code> and <code>g600.440</code>. Each is sent as text with a trailing space and arguments, ended by <code>\r\n</code>. The stage module also carries the axis table <code>X 0 · Y 1 · Z 2 · T 3 · R 4 · M 5</code>. Meanings are not stored next to the strings, so the mapping still has to come from the code or from a capture.</p>
 <h4>Stage (g500.rlm)</h4>
 <div class="chips"><code>.SA</code><code>.SB</code><code>.SC</code><code>.SD</code><code>.SE</code><code>.SF</code><code>.SH</code><code>.SI</code><code>.SJ</code><code>.SK</code><code>.SM</code><code>.SN</code><code>.SO</code><code>.SP</code><code>.SQ</code><code>.SR</code><code>.SS</code><code>.SV</code><code>.SW</code><code>.SY</code><code>.SZ</code></div>
 <h4>Vacuum and chamber (g600.440)</h4>
@@ -423,7 +428,7 @@ MOVB  0x08 → *A0(128)   <span class="c">; MCR = OUT2 (IRQ enable)   [UART B us
 <p class="prose">The <code>.Q</code> group lines up with the four-quadrant BSD functions (<code>v_qbsd_quad/vis/gain</code>), and the <code>.T</code> group likely with thresholds (<code>v_edx_thresh</code>, scintillator threshold). The firmware reports its versions as "STGVAC Comms cpu" and "Vac cpu", so stage and vacuum share one comms processor that fans out on the column side.</p>
 
 <h3>UART A: EHT protocol</h3>
-<p class="prose">The EHT module builds its commands one character at a time, so there are no complete strings to lift. The character constants in each sender give the outline:</p>
+<p class="prose"><i>Since decoded from captures (encodings, beam-on and shutdown sequences, status bits): <code>EHT_INTERFACE_SPEC.md</code>. The command table also has <code>eht_readback</code> / <code>toggle_readback</code> entries, but no read-back query was seen on the wire.</i> The EHT module builds its commands one character at a time, so there are no complete strings to lift. The character constants in each sender give the outline:</p>
 <div class="tbl"><table>
 <thead><tr><th>GSP function</th><th>Characters used</th><th>Probable meaning</th></tr></thead>
 <tbody>
@@ -529,7 +534,7 @@ DM(I4) = AX0                   <span class="c">; I4 = 0x3400 + register → link
 <div class="tbl"><table>
 <thead><tr><th>Register</th><th>Function</th><th>Written by</th></tr></thead>
 <tbody>
-<tr><td class="num">0x10 / 0x11</td><td><b>C1 condenser</b> (two 12-bit DACs, likely coarse/fine)</td><td><code>_gsp_set_condenser_lens_current</code> via chip-0 ramp; read by <code>_gsp_get_C1C2_setting</code></td></tr>
+<tr><td class="num">0x10 / 0x11</td><td><b>C1 condenser</b>: coarse / fine of one 20-bit current over 3 A (confirmed by capture, §9)</td><td><code>_gsp_set_condenser_lens_current</code>, written directly; read by <code>_gsp_get_C1C2_setting</code></td></tr>
 <tr><td class="num">0x12 / 0x13</td><td><b>C2 condenser</b></td><td>same</td></tr>
 <tr><td class="num">0x0D</td><td>C1 and C2 polarity bits (init 0x20)</td><td><code>_gsp_set_C1_lens_polarity</code>, <code>_gsp_set_C2_lens_polarity</code></td></tr>
 <tr><td class="num">0x14 / 0x15, 0x32 / 0x33</td><td><b>Gun alignment</b> (GUN1[0]→0x14, GUN1[3]→0x15, GUN1[2]→0x32, GUN1[1]→0x33)</td><td>DSP cmd 0x14 from DPRAM GUN1/GUN2</td></tr>
@@ -591,33 +596,34 @@ reg <span class="k">0x4B</span>  read → write 0 (stop) → reprogram → resto
   <li>The DSP takes a per-line interrupt (IRQ1 → PM 0x0200) that counts lines, switches between rasters (split/quad/dual-mag), handles end-of-frame, and writes per-line values such as Y position 0x74. The timer interrupt (PM 0x2000) handles slower periodic work (stereo, frame averaging).</li>
 </ul>
 <p class="prose">The DSP crystal frequency isn't in the software, so absolute dwell times need a scope. The ratios are fixed: each scan-rate step should halve the frequency on the clock fiber.</p>
+<div class="note acc"><b>Captured:</b> there is no clock fiber. The line period is set on the EO board itself (chip 2 register 0x0A = 2<sup>n</sup>−1 for speed n; line = (r0A+1) × 87.9 µs, 2.81 ms at speed 5). The SPORT1 clock stays inside the IP board.</div>
 
-<h3>The four EO fibers (confirmed hardware)</h3>
-<p class="prose">Your photo of the EO board shows <b>one HFBR-1521 transmitter (grey) and three HFBR-2521 receivers (blue)</b>, all HP/Agilent Versatile Link parts rated at 5 MBd. So three fibers run IP board → EO board and one runs EO → IP. The return fiber explains the busy-flag handshake and the register readback in the DSP code. The 5 MBd rating caps every signal on these fibers. A 5 MBd capture front-end (any logic analyser at ≥25 MS/s) is enough, and no pixel clock above about 5 MHz can be on them.</p>
+<h3>The four EO fibers (confirmed by capture)</h3>
+<p class="prose">The EO board has <b>one HFBR-1521 transmitter and three HFBR-2521 receivers</b> (HP/Agilent Versatile Link, 5 MBd). Captures of all four with a Tektronix MSO24 during a cold boot and while operating every LEO-32 control settled their roles. All are TTL idle high at the transceivers.</p>
 <figure>
 <div class="fig narrow">
-<svg viewBox="0 0 900 330" role="img" aria-label="Signals expected on the three inbound and one return EO fibers">
+<svg viewBox="0 0 900 330" role="img" aria-label="Captured roles of the three inbound and one return EO fibers">
   <defs><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrf"/></marker></defs>
   <rect x="20" y="20" width="250" height="290" class="grp"/><text x="32" y="42" class="t-head">IP board</text>
   <rect x="36" y="58" width="218" height="54" class="bx"/><text x="46" y="78" class="t-label">ADSP-21xx</text><text x="46" y="96" class="t-small t-muted">raster math, line IRQ, commands</text>
-  <rect x="36" y="128" width="218" height="46" class="bx"/><text x="46" y="148" class="t-label">Remote register port</text><text x="46" y="164" class="t-small t-mono">DM 0x3400+n · busy @0x37FF</text>
-  <rect x="36" y="190" width="218" height="46" class="bx"/><text x="46" y="210" class="t-label">SPORT1 SCLK (pixel clock)</text><text x="46" y="226" class="t-small t-mono">CLKOUT / 2^(rate−2)</text>
-  <rect x="36" y="252" width="218" height="46" class="bx"/><text x="46" y="272" class="t-label">Line/frame timing, ADC</text><text x="46" y="288" class="t-small t-muted">PMT digitised here</text>
+  <rect x="36" y="128" width="218" height="46" class="bx"/><text x="46" y="148" class="t-label">Remote register port</text><text x="46" y="164" class="t-small t-mono">serialised at 3.6864 Mbit/s</text>
+  <rect x="36" y="190" width="218" height="46" class="bx"/><text x="46" y="210" class="t-label">Frame / line timing</text><text x="46" y="226" class="t-small t-muted">acquisition gates</text>
+  <rect x="36" y="252" width="218" height="46" class="bx"/><text x="46" y="272" class="t-label">Video ADC, frame store</text><text x="46" y="288" class="t-small t-muted">PMT digitised here (coax)</text>
   <rect x="630" y="20" width="250" height="290" class="grp"/><text x="642" y="42" class="t-head">EO board</text>
-  <rect x="646" y="58" width="218" height="72" class="bx"/><text x="656" y="78" class="t-label">5 ramp-controller chips</text><text x="656" y="96" class="t-small t-muted">regs 0x00–0x8D + 0x90, 0x94</text><text x="656" y="112" class="t-small t-muted">HFBR-1521 TX · 3× HFBR-2521 RX</text>
-  <rect x="646" y="146" width="218" height="80" class="bxa"/><text x="656" y="166" class="t-label">X / Y ramp engines</text><text x="656" y="184" class="t-small t-muted">step per pixel clock,</text><text x="656" y="200" class="t-small t-muted">prescaler 0x4A for slow scans</text>
-  <rect x="646" y="242" width="218" height="56" class="bx"/><text x="656" y="262" class="t-label">Lens / stig / scan DACs</text><text x="656" y="280" class="t-small t-muted">12-bit and 16-bit outputs</text>
-  <path d="M254,151 L646,94" class="fib" marker-end="url(#ah4)"/><text x="380" y="110" class="t-small t-fiber">IN 1  register writes (addr+data), bursts</text>
-  <path d="M254,213 L646,186" class="fib" marker-end="url(#ah4)"/><text x="400" y="190" class="t-small t-fiber">IN 2  pixel clock, continuous</text>
-  <path d="M254,268 L646,210" class="fib" marker-end="url(#ah4)"/><text x="400" y="252" class="t-small t-fiber">IN 3  line/frame sync or bus clock</text>
-  <path d="M646,280 C520,300 460,320 254,292" class="fib" marker-end="url(#ah4)"/><text x="400" y="318" class="t-small t-fiber">OUT  ack / read data (HFBR-1521)</text>
+  <rect x="646" y="58" width="218" height="72" class="bx"/><text x="656" y="78" class="t-label">5 ramp-controller chips</text><text x="656" y="96" class="t-small t-muted">chip = n &gt;&gt; 5, register = n &amp; 31</text><text x="656" y="112" class="t-small t-muted">HFBR-1521 TX · 3× HFBR-2521 RX</text>
+  <rect x="646" y="146" width="218" height="80" class="bxa"/><text x="656" y="166" class="t-label">X ramp (own clock)</text><text x="656" y="184" class="t-small t-muted">Y written by the host</text><text x="656" y="200" class="t-small t-muted">once per line</text>
+  <rect x="646" y="242" width="218" height="56" class="bx"/><text x="656" y="262" class="t-label">Lens / stig / scan DACs</text><text x="656" y="280" class="t-small t-muted">C1, C2, objective: 20-bit over 3 A</text>
+  <path d="M254,151 L646,94" class="fib" marker-end="url(#ah4)"/><text x="350" y="110" class="t-small t-fiber">F3  register frames (32-bit), bursts</text>
+  <path d="M254,213 L646,186" class="fib" marker-end="url(#ah4)"/><text x="390" y="190" class="t-small t-fiber">F2  line gate, 550 µs per line</text>
+  <path d="M254,226 L646,210" class="fib" marker-end="url(#ah4)"/><text x="390" y="236" class="t-small t-fiber">F1  frame gate</text>
+  <path d="M646,280 C520,300 460,320 254,292" class="fib" marker-end="url(#ah4)"/><text x="400" y="318" class="t-small t-fiber">F4  read replies (start bit + 16 bits)</text>
 </svg>
 </div>
-<figcaption><b>Fig. 4</b> Fiber roles. The direction split (3 in, 1 out) is confirmed from the board photo. The register bus and pixel clock are strongly supported by the code; which inbound fiber carries which signal still has to be read off the capture.</figcaption>
+<figcaption><b>Fig. 4</b> Fiber roles as captured. The static analysis expected a pixel clock on one inbound fiber; there is none. Full frame format and register map: <code>SCAN_GENERATOR_INTERFACE_SPEC.md</code>.</figcaption>
 </figure>
 
 <h3>Capture decoding guide</h3>
-<p class="prose">Each register write should appear as one packet carrying a target (EO or HRRU), a 10-bit register number and a 16-bit value, followed by an acknowledge on the return fiber. A read sends the address and gets the value back on the return fiber. These UI actions should each produce a short, recognisable set of writes:</p>
+<p class="prose"><i>This was the prediction before capturing; it held for the register map. The packet carries no target bits (only the EO board is on these fibers), and lens changes write the DACs directly rather than through the chip-0 ramp. Results: <code>SCAN_GENERATOR_INTERFACE_SPEC.md</code> §5.</i> Each register write should appear as one packet carrying a target (EO or HRRU), a 10-bit register number and a 16-bit value, followed by an acknowledge on the return fiber. A read sends the address and gets the value back on the return fiber. These UI actions should each produce a short, recognisable set of writes:</p>
 <div class="tbl"><table>
 <thead><tr><th>UI action</th><th>Registers that should change</th><th>Notes</th></tr></thead>
 <tbody>
@@ -638,11 +644,43 @@ reg <span class="k">0x4B</span>  read → write 0 (stop) → reprogram → resto
 
 <h3>Still to decode</h3>
 <ul class="prose">
-  <li>The wire format of a register packet (bit order, framing, how the target and read/write are encoded). The init burst gives a known sequence to align against.</li>
+  <li><s>The wire format of a register packet.</s> Decoded: <code>0 R n[12] value[16] 11</code> at 3.6864 Mbit/s (scan spec §3).</li>
   <li>Exact meanings of ramp parameters +3…+7 and the control-word bits. Compare captures of focus wobble (0x8043), stig wobble (0x8063) and scanning (0x8402/0x8422).</li>
   <li>HRRU target (0x20): uses the same chip layout (X at 0x40, Y at 0x60). It only matters if the photo unit is kept.</li>
 </ul>
-<h2 id="other"><span class="sn">9</span>Other interfaces worth knowing</h2>
+<h2 id="optics"><span class="sn">9</span>Electron optics: how LEO-32 sets the lenses</h2>
+<p class="prose">LEO-32 keeps no tables of lens DAC values. Its GSP module <code>g200.440</code> holds a paraxial model of the column: gun crossover → C1 → C2 → final aperture → objective → specimen. Every operator control changes one input of the model; the model gives each lens a focal length, and each focal length becomes a coil current for the present kV. The model was decompiled symbol by symbol, run in a TMS34020 emulator around the original <code>g200.440</code>, and compared with lens values captured on the EO fiber. Full write-up: <code>specifications/ELECTRON_OPTICS_MODEL.md</code>.</p>
+<div class="tbl"><table>
+<thead><tr><th>Operator control</th><th>What it changes in the model</th><th>Lenses that move</th></tr></thead>
+<tbody>
+<tr><td>kV</td><td>electron rigidity √V<sub>r</sub> and the gun brightness / source size</td><td>all; the objective scales with √V<sub>r</sub>, the condensers are re-solved for the new gun data</td></tr>
+<tr><td>WD (= focus)</td><td>objective image plane; the C2 crossover is its object</td><td>objective</td></tr>
+<tr><td>Probe current</td><td>source demagnification by C1 and C2</td><td>C1, C2 (objective slightly)</td></tr>
+<tr><td>Optibeam mode</td><td>Normal: angle optimised for resolution (from the objective's C<sub>s</sub>); Depth: C2 at its limit; Auto resolution: LEO-32 also picks the probe current</td><td>C1, C2</td></tr>
+<tr><td>Aperture entry (30 / 50 µm)</td><td>aperture radius in the angle condition</td><td>C1, C2</td></tr>
+<tr><td>Magnification</td><td>nothing (scan-coil weights only)</td><td>none</td></tr>
+</tbody></table></div>
+<p class="prose"><b>Encoding.</b> Each lens current is a 20-bit code over 3 A, split into a 12-bit coarse DAC (code &gt;&gt; 8) and a fine DAC (low byte, centred on 2048 for the objective). C1 = chip 0 DAC0/1, C2 = chip 0 DAC2/3, objective = chip 1 DAC0/1. Current I → excitation k = N(I + rem)/(cal·√V<sub>r</sub>), with per-machine calibration and remanence from <code>Data.vac</code> and a C1↔C2 crosstalk term.</p>
+<h3>Lens capture session, 15 November 2026</h3>
+<p class="prose">About 130 settled lens states were captured with the beam on while sweeping WD 5–100 mm, probe current 10 pA–100 nA, both Optibeam modes, aperture entry and magnification at 20 kV, plus kV 1–30 kV both ways and a 5 kV block (<code>scope_tools/EO_OPTICS_TEST_PLAN.md</code>, data in <code>analysis/optics/eo_capture_2026-11-15.csv</code>). What they settled:</p>
+<ul class="prose">
+  <li><b>Beam off = 100 V.</b> LEO-32 runs the model on the applied kV, which is 0 with the beam off and is clamped to 100 V. Every earlier lens capture made with the beam off was such a state.</li>
+  <li><b>Displayed WD is rescaled</b> on the PC side: internal WD ≈ (WD − 1.9 mm) / 1.22. With that, the original code's objective matches the captures within 1–8 counts from 5 to 100 mm and 1 to 30 kV.</li>
+  <li><b>LEO-32 used its LaB6 gun table</b> and effective condenser calibrations of ≈ 0.94 / 0.90 on this tungsten machine. The likely cause is a filament-type index that differs between the PC and the GSP.</li>
+  <li><b>Modes:</b> Normal = GSP mode 0, Depth = mode 1 (C2 at its 3.68 mm focal-length limit), Auto resolution = a separate flag. Auto resolution picked 150 / 90 / 70 / 50 pA at 20 / 10 / 5 / 2 kV.</li>
+  <li><b>No hysteresis:</b> every state repeated to within a few counts; magnification never touches the lenses.</li>
+</ul>
+<h3>The replacement's lens model</h3>
+<p class="prose">The control box re-implements the same equations (<code>firmware/leo_control/optics.cpp</code>), with the calibrations above and four constants fitted to the captures. Over the 124 settled states:</p>
+<div class="tbl"><table>
+<thead><tr><th></th><th>C1 (rms)</th><th>C2 (rms)</th><th>Objective (rms / max)</th></tr></thead>
+<tbody>
+<tr><td>All states</td><td class="num">42</td><td class="num">62</td><td class="num">1.6 / 8</td></tr>
+<tr><td>Depth mode</td><td class="num">17</td><td class="num">9</td><td class="num">0.4</td></tr>
+</tbody></table></div>
+<p class="prose">Units are coarse DAC counts (1 count = 0.73 mA), so focus is reproduced essentially exactly and the condensers within a few % of the lens current. The firmware's result is identical to the Python prototype on every captured state, and one full computation takes about 2 ms on the Teensy. Unlike LEO-32, the box computes the lenses for the kV it commands, so they are already right when the beam comes on.</p>
+
+<h2 id="other"><span class="sn">10</span>Other interfaces worth knowing</h2>
 <ul class="prose">
   <li><b>VP / "Orsay" controller</b> (<code>hpapp.exe</code>, 1998): PC <code>COM2:9600,n,8,1</code>. Commands seen: <code>RE 0</code> reset, <code>ST 1,%d</code> to <code>ST 5,5</code> timeouts, <code>TO %d</code>, <code>HP %d,%d,%d</code> pressure target, <code>MC 100,900</code>. It has its own state names (AT_AIR_HP, PUMPING_LP, GOING_TO_HP…), a debug log option, and <code>OrsayBoardTimeout=300</code> in <code>C:\WINDOWS\LEO.INI</code>.</li>
   <li><b>Licence dongle</b>: DESkey DK2 on the parallel port (<code>DK2WN95.386</code>, <code>DK2WIN32.DLL</code> imported directly by <code>leoserv.exe</code>). M600 stores the serial number and licence bits on it ("Re-write Licences to Dongle"). M600 also refers to a backup file <code>C:\leo\data.dgl</code>, which is not on this image. HASP and Hardlock drivers are also installed, probably for third-party software.</li>
@@ -651,7 +689,7 @@ reg <span class="k">0x4B</span>  read → write 0 (stop) → reprogram → resto
   <li><b>Calibration data</b>: <code>C:\LEO\*.VAC</code> (vacuum NVRAM copies), <code>gamma2.dat</code> and <code>loc*/loi*.dat</code> (HRRU photo tables), <code>L500.INI</code> (filament limits, VP target 9, VP limit 274), and the Access database <code>LEO_USER.MDB</code> (users, apertures, column calibration). A replacement system needs these values even if none of the code is reused.</li>
 </ul>
 
-<h2 id="notable"><span class="sn">10</span>Notable findings on this install</h2>
+<h2 id="notable"><span class="sn">11</span>Notable findings on this install</h2>
 <div class="note bad"><b>EHT link faults are current.</b> <code>LOG\leolog.leo</code> runs from 01-01-2025 to 15-07-2026 and contains 95 "EHT set comms timeout" events, "EHT – Filament Blown" on 10 and 13 July 2026, 20 "EHT – Spurious Reset", and repeated "Vacuum system Penning Gauge Failure" warnings. Timeouts on UART A could be a degrading fiber, transceiver, or the EHT unit itself.</div>
 <div class="note"><b>A 69.5 MB log.</b> <code>LOG\Copy of leolog.leo</code> (Feb 2003 – May 2024) holds about 510,000 alternating "EHT Set Extractor Trip" / "EHT Set Emergency Rundown" errors (numbers 519/520), roughly every 10 minutes for long periods. That is a long-standing EHT fault condition and a log that grew without limit. Free disk space is logged at 465 MB.</div>
 <ul class="prose">
@@ -667,7 +705,7 @@ reg <span class="k">0x4B</span>  read → write 0 (stop) → reprogram → resto
   <li><b>User and backup data.</b> 20+ user profiles under <code>LEO-32\user</code> (macros, state files, annotation sets) and dated database backups from 2000 to 2011 in <code>C:\Backups</code>. The <code>share\</code> folder holds 78 TIFF images (1024×768).</li>
 </ul>
 
-<h2 id="paths"><span class="sn">11</span>Replacement paths</h2>
+<h2 id="paths"><span class="sn">12</span>Replacement paths</h2>
 <p class="prose">The board does three separate jobs: serial links to slow subsystems, real-time scan generation with image acquisition, and display. These can be replaced at different speeds. The recommended order goes from cheapest-to-verify to hardest.</p>
 
 <div class="phase">
@@ -705,9 +743,16 @@ reg <span class="k">0x4B</span>  read → write 0 (stop) → reprogram → resto
 </ul>
 </div>
 
-<div class="note acc"><b>Recommendation.</b> Do path A now. It is cheap, it tells you whether the EHT timeouts are a link problem, and it decides whether path B is worth doing. If the scan and video fibers turn out to be simple, go straight from A to C and skip the bridge work in B.</div>
+<div class="note acc"><b>Recommendation (12 Nov).</b> Do path A now. It is cheap, it tells you whether the EHT timeouts are a link problem, and it decides whether path B is worth doing. If the scan and video fibers turn out to be simple, go straight from A to C and skip the bridge work in B.</div>
+<div class="note acc"><b>What happened (to 15 Nov).</b>
+<ul>
+<li><b>Path A is done.</b> All links were captured and specified, and the scan fibers turned out to be simple serial frames plus two gates. So the project went straight to <b>path C</b>, without an FPGA scan engine.</li>
+<li><b>Control box.</b> A Teensy 4.0 board (<code>hardware/leo_control_box</code>, PCB at the fab; firmware in <code>firmware/leo_control</code>) drives the EHT, stage / vacuum and VP links and the four EO fibers. It owns the machine state and every safety rule: filament off and cooled before any pressure change, ramps, fault handling, the VP watchdog. It computes the scan-coil weights and the lenses (§9).</li>
+<li><b>Imaging.</b> The Open Beam Interface (Glasgow) images through the EO board's external scan input.</li>
+<li><b>User interface.</b> A browser page (<code>webui/</code>) talks to the box over Web Serial and to OBI through a local bridge. It replaces LEO-32: focus = WD, probe current, Optibeam mode and aperture, magnification, stigmator pad, beam and vacuum control, 16-bit TIFF capture.</li>
+</ul></div>
 
-<h2 id="evidence"><span class="sn">12</span>Evidence index</h2>
+<h2 id="evidence"><span class="sn">13</span>Evidence index</h2>
 <div class="tbl"><table>
 <thead><tr><th>File</th><th>What it showed</th></tr></thead>
 <tbody>
@@ -718,6 +763,8 @@ reg <span class="k">0x4B</span>  read → write 0 (stop) → reprogram → resto
 <tr><td><code>TIGA\TIGAGM.OUT</code></td><td>TIGA 2.20 + LEO kernel symbols; "S300 Image Processor Board"</td></tr>
 <tr><td><code>TIGA\g100.440</code> … <code>G1000.RLM</code></td><td>GSP modules with symbols, <code>.TIGAEXT</code> command tables, UART and DSP addresses, dot-command literals</td></tr>
 <tr><td><code>WINDOWS\SYSTEM\TIGASEM.DLL</code></td><td>≈440 host entry points; command-word encoding</td></tr>
+<tr><td><code>scope_captures/</code>, <code>capture_tools/captures/</code></td><td>Scope captures of the four EO fibers and serial logs of the EHT, stage / vacuum and VP links (12–15 Nov), behind the interface specifications</td></tr>
+<tr><td><code>LEO\Data.vac</code>, <code>LEO-32\user\*\*.MLC</code></td><td>Per-machine lens calibration; saved LEO-32 operating points (kV, WD, probe current, lens currents)</td></tr>
 <tr><td><code>WINDOWS\SEM_INIT.DAT</code>, <code>DPRAM.IMG</code>, <code>SEM_INIT.EXE</code></td><td>DSP variable map; ADSP-21xx firmware (command table, remote register port, raster math, SCLK pixel clock)</td></tr>
 <tr><td><code>LEO-32\srv16.dll</code>, <code>Srv32.dll</code>, <code>m007</code>–<code>m800.dll</code></td><td>Thunk layer, controller DLL exports and versions</td></tr>
 <tr><td><code>LEO-32\hpapp.exe</code>, <code>WINDOWS\LEO.INI</code></td><td>VP controller protocol on COM2</td></tr>
@@ -727,5 +774,5 @@ reg <span class="k">0x4B</span>  read → write 0 (stop) → reprogram → resto
 </tbody></table></div>
 <p class="prose">Method: static analysis only. PE/NE headers and exports were parsed, x86-16 code was disassembled with Capstone, TI COFF symbol, relocation and <code>.cinit</code> tables were parsed, and short TMS340 sequences were decoded by hand. Nothing from the image was executed. Items marked "probable" or "inferred" need a hardware check.</p>
 
-<footer>Prepared from the C: drive image of the LEO 438VP control PC · Stage 1 of the replacement project · November 2026</footer>
+<footer>Prepared from the C: drive image of the LEO 438VP control PC · Stage 1 of the replacement project, November 2026 · updated 15 November 2026 with the link captures, the electron-optics work and the replacement status</footer>
 </div>

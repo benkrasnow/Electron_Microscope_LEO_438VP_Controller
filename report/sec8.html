@@ -1,5 +1,5 @@
 <h2 id="dsp"><span class="sn">8</span>Scan generator path: DSP, raster engine and the four fibers</h2>
-<p class="prose">This section goes deeper than the first pass. The DSP program image (<code>DPRAM.IMG</code>) and the GSP's DSP driver (<code>g900.rlm</code>) were both decoded far enough to follow a scan setting from the user interface down to the registers on the far end of the link. The picture: <b>the PC never streams X/Y samples.</b> The DSP loads start, step, count and flyback values into a hardware raster generator, sets a pixel clock, and then updates registers only per line or per user action.</p>
+<p class="prose">This section goes deeper than the first pass and now includes the decoded EO register map. The DSP program image (<code>DPRAM.IMG</code>) and the GSP's DSP driver (<code>g900.rlm</code>) were both decoded far enough to follow a scan setting from the user interface down to the registers on the far end of the link. The picture: <b>the PC never streams X/Y samples.</b> The DSP loads start, step, count and flyback values into a hardware raster generator, sets a pixel clock, and then updates registers only per line or per user action.</p>
 
 <h3>The DSP is an Analog Devices ADSP-21xx</h3>
 <p class="prose"><code>DPRAM.IMG</code> stores 24-bit words as three bytes plus an <code>FF</code> pad, which is the GSP's 32-bit view of a 24-bit program RAM. The words decode cleanly as ADSP-2100-family code: interrupt vectors every 4 words, <code>RTI</code>=<code>0A001F</code>, <code>RTS</code>=<code>0A000F</code>, <code>DO…UNTIL</code> loops, <code>DIVQ</code> division. The control-register writes match an ADSP-2101/2105-class part: system and wait-state registers at DM 0x3FFE/F, the timer at 0x3FFB–D, SPORT1 at 0x3FF1/2, and internal data RAM at 0x3800. Program words 0x000–0x3F7 are a small resident monitor (command loop and code download). The scan firmware itself lives at PM 0x2000–0x2C99 (about 3,200 instructions).</p>
@@ -70,31 +70,58 @@ DM(I4) = AX0                   <span class="c">; I4 = 0x3400 + register → link
   <li><b>Address space:</b> 10 bits (0x000–0x3FE) per target, 16-bit data. Targets are selected by bits 5–6 of IP-board register 0x40: <b>0x40 = EO board</b>, <b>0x20 = HRRU</b> (the photo recording unit).</li>
   <li><b>GSP access:</b> <code>_set_eo_register</code> fills TRANSSTARTADD (0x405/6) with the register number, TRANSNUMBER (0x407/8) with a count, data in the transfer buffer, and TRANSCTRL (0x409) = 0x40, then issues DSP command 0x04. Lens, stigmator and condenser code in <code>g200.440</code> (<code>_write_EO_value</code>, <code>_gsp_set_C3_current</code>, <code>_gsp_set_condenser_lens_current</code> …) all end up here. So <b>the same link carries both lens/stig set-points and raster-generator settings</b>.</li>
   <li><b>Traffic:</b> bursts only. There is one write per register, gated by a busy flag. The DSP writes a handful of registers per scan-rate or format change and a few per line (Y position from the line interrupt). This is the low-bandwidth "EO command" channel you expected.</li>
-  <li><b>Readback exists.</b> The firmware reads remote registers 0x4B, 0x14 and 0x30 and the EO board version, waiting on the busy flag for the reply. If all four fibers really run IP-board → scan generator, these reads must be served from a copy on the IP board. Otherwise there is a return fiber or a copper path. Checking transmitter vs receiver parts on the board settles this (HFBR-15xx are transmitters, HFBR-25xx receivers).</li>
+  <li><b>Readback is real.</b> The firmware reads remote registers (0x4B, 0x14, 0x30, board ID 0x90) and waits on the busy flag for the reply. The EO board has one fiber transmitter (HFBR-1521) for this return path; see below.</li>
 </ul>
 
-<h3>Remote register map (EO target)</h3>
-<p class="prose">The registers fall into five blocks: four identical 32-register "deflection channels" and a common block. The HRRU target uses the same layout for its X/Y channels, which suggests one raster-generator design (probably an LCA or ASIC) reused in both units. Meanings below come from how the firmware computes each value. Treat them as working names until confirmed on a capture.</p>
-<figure>
-<div class="fig narrow">
-<svg viewBox="0 0 900 300" role="img" aria-label="Remote register map with four deflection channel blocks and a common block">
-  <rect x="20" y="40" width="160" height="200" class="bx2"/><text x="30" y="62" class="t-label">0x00–0x1F  Ch A</text>
-  <text x="30" y="84" class="t-small t-muted">emission-image X (gun</text><text x="30" y="98" class="t-small t-muted">deflection), dual-mag</text>
-  <text x="30" y="126" class="t-small t-mono">02 step · 08 count</text><text x="30" y="142" class="t-small t-mono">0B ctl (0x8633)</text><text x="30" y="158" class="t-small t-mono">0C mode · 10 offset</text><text x="30" y="174" class="t-small t-mono">14/15 dual-mag</text>
-  <rect x="190" y="40" width="160" height="200" class="bx2"/><text x="200" y="62" class="t-label">0x20–0x3F  Ch B</text>
-  <text x="200" y="84" class="t-small t-muted">emission-image Y,</text><text x="200" y="98" class="t-small t-muted">dual-mag second field</text>
-  <text x="200" y="126" class="t-small t-mono">22 step · 28 count</text><text x="200" y="142" class="t-small t-mono">2B ctl (0x8633)</text><text x="200" y="158" class="t-small t-mono">2C mode · 30 offset</text><text x="200" y="174" class="t-small t-mono">32/33, 38</text>
-  <rect x="360" y="40" width="170" height="200" class="bxa"/><text x="370" y="62" class="t-label">0x40–0x5F  X (line)</text>
-  <text x="370" y="86" class="t-small t-mono">40 start · 41 flyback step</text><text x="370" y="102" class="t-small t-mono">42 pixel step · 47 =0x400</text><text x="370" y="118" class="t-small t-mono">48 pixels · 49 blank pixels</text><text x="370" y="134" class="t-small t-mono">4A clock prescaler</text><text x="370" y="150" class="t-small t-mono">4B control (run/stop)</text><text x="370" y="166" class="t-small t-mono">4C/4D mode, mag range</text><text x="370" y="182" class="t-small t-mono">50 offset · 54 X position</text><text x="370" y="198" class="t-small t-mono">55 =0x8000</text>
-  <rect x="540" y="40" width="170" height="200" class="bxa"/><text x="550" y="62" class="t-label">0x60–0x7F  Y (frame)</text>
-  <text x="550" y="86" class="t-small t-mono">60 start · 61 flyback step</text><text x="550" y="102" class="t-small t-mono">62 line step</text><text x="550" y="118" class="t-small t-mono">68 lines · 69 blank lines</text><text x="550" y="134" class="t-small t-mono">6A–6C mode</text><text x="550" y="150" class="t-small t-mono">70 offset (post-rotation)</text><text x="550" y="166" class="t-small t-mono">71–76 transform / dual-mag</text><text x="550" y="182" class="t-small t-mono">74 Y position (per line)</text>
-  <rect x="720" y="40" width="160" height="200" class="bx"/><text x="730" y="62" class="t-label">0x80–0x8B  Common</text>
-  <text x="730" y="86" class="t-small t-mono">80=0 81=1 82=1</text><text x="730" y="102" class="t-small t-mono">87=0 88=FF 89=FF</text><text x="730" y="118" class="t-small t-mono">8A=0 8B=0x8403</text><text x="730" y="146" class="t-small t-muted">(init values from</text><text x="730" y="160" class="t-small t-muted">DSP command 0x12)</text>
-  <text x="20" y="270" class="t-small t-muted">Lens, condenser, stigmator and gun-align DAC registers are also in this 10-bit space; the GSP writes them through DSP command 0x04, so their numbers come from g200.440 data, not the DSP.</text>
-</svg>
-</div>
-<figcaption><b>Fig. 4</b> Remote register blocks on the EO target, with the values or roles seen in the DSP firmware.</figcaption>
-</figure>
+<h3>EO board register map (decoded)</h3>
+<p class="prose">The EO board's register space is built from <b>five identical "ramp controller" chips</b>. The GSP module (<code>g200.440</code>) describes them with five structures, <code>_CHIP0</code>…<code>_CHIP4</code>, filled by <code>_init_ramp_controller_struct</code>. Chip <i>n</i> sits at register base <i>n</i>·0x20. The layout within each chip comes from <code>_set_ramp</code> / <code>_disable_ramp</code>. The output assignments come from tracing every <code>_write_EO_value</code> / <code>_read_EO_value</code> call in <code>g200.440</code> and every remote write in the DSP firmware.</p>
+<div class="tbl"><table>
+<thead><tr><th>Chip offset</th><th>Role</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td class="num">+0x00 … +0x0A</td><td>Ramp generator parameters: +0 start, +1 flyback step, +2 step, +7, +8 count, +9 blank count, +0x0A clock prescaler</td><td><code>_set_ramp</code> args 2–12; DSP raster math (§ below)</td></tr>
+<tr><td class="num">+0x0B</td><td>Ramp control word; bit 15 = run. 0 = stop</td><td>Written last by <code>_set_ramp</code>, cleared by <code>_disable_ramp</code>. Values seen: 0x8402/0x8422 (scan X), 0x8633 (emission imaging), 0x8632 (dynamic stig), 0x8063 (stig wobble), 0x8043 (focus wobble), 0x8403 (chip 4)</td></tr>
+<tr><td class="num">+0x0C</td><td>Ramp output routing: low nibble = which output the ramp drives, 0xF = none; bits 4–11 extra mode</td><td><code>_set_ramp</code> builds <code>out | a&lt;&lt;4 | b&lt;&lt;8</code>; <code>_disable_ramp</code> writes 0xF; scan X/Y use 4 (→ output +0x14)</td></tr>
+<tr><td class="num">+0x0D</td><td>8-bit option bits (lens polarity relays, scan source / mag range)</td><td>read 8-bit, read-modify-write by <code>_gsp_set_C1/C2/C3_lens_polarity</code>, <code>_gsp_set_scan_source</code>, <code>_DSP_set_mag_range</code></td></tr>
+<tr><td class="num">+0x10 … +0x19</td><td>Output DACs. Lens, stig and alignment outputs are 12-bit (mid-scale 0x800); scan and rotation outputs are 16-bit (mid-scale 0x8000)</td><td><code>_read_EO_value(reg, 12)</code>; init values 0x800 / 0x8000</td></tr>
+</tbody></table></div>
+
+<div class="tbl"><table>
+<thead><tr><th>Register</th><th>Function</th><th>Written by</th></tr></thead>
+<tbody>
+<tr><td class="num">0x10 / 0x11</td><td><b>C1 condenser</b>: coarse / fine of one 20-bit current over 3 A (confirmed by capture, §9)</td><td><code>_gsp_set_condenser_lens_current</code>, written directly; read by <code>_gsp_get_C1C2_setting</code></td></tr>
+<tr><td class="num">0x12 / 0x13</td><td><b>C2 condenser</b></td><td>same</td></tr>
+<tr><td class="num">0x0D</td><td>C1 and C2 polarity bits (init 0x20)</td><td><code>_gsp_set_C1_lens_polarity</code>, <code>_gsp_set_C2_lens_polarity</code></td></tr>
+<tr><td class="num">0x14 / 0x15, 0x32 / 0x33</td><td><b>Gun alignment</b> (GUN1[0]→0x14, GUN1[3]→0x15, GUN1[2]→0x32, GUN1[1]→0x33)</td><td>DSP cmd 0x14 from DPRAM GUN1/GUN2</td></tr>
+<tr><td class="num">0x16 / 0x17</td><td><b>Stigmator X / Y</b></td><td><code>_gsp_set_stigmator_x/y</code>, stig wobble (chip-0 ramp, ctl 0x8063), dynamic stig (ctl 0x8632)</td></tr>
+<tr><td class="num">0x30 / 0x31</td><td><b>C3 objective (focus)</b>: 0x30 coarse, 0x31 fine</td><td><code>_gsp_set_C3_current</code>, <code>_gsp_focus_wobble</code> (0x31, chip-1 ramp ctl 0x8043), hysteresis removal, WD modulation</td></tr>
+<tr><td class="num">0x2D</td><td>C3 polarity bits</td><td><code>_gsp_set_C3_lens_polarity</code></td></tr>
+<tr><td class="num">0x34 … 0x37</td><td>Unassigned in this software (init 0x80)</td><td>EO init only</td></tr>
+<tr><td class="num">0x38 / 0x3B</td><td>Dual-magnification controls</td><td>DSP cmd 0x21</td></tr>
+<tr><td class="num">0x39</td><td>Dynamic stigmation enable (0xFF on / 0 off)</td><td><code>_gsp_enable/disable_dynamic_stig</code></td></tr>
+<tr><td class="num">0x40 … 0x4C</td><td><b>X (line) ramp</b>: start, flyback step, pixel step, count, blank count, prescaler, control, routing → output 0x54</td><td>DSP cmds 0x06, 0x07</td></tr>
+<tr><td class="num">0x4D</td><td>X option bits: mag range, slow-line / digital-line mode</td><td>DSP cmds 0x06, 0x10</td></tr>
+<tr><td class="num">0x50 / 0x72</td><td><b>Scan amplitude X / Y</b> (multiplying DACs; from SCANAMP[mag range])</td><td>DSP routine 0x241C</td></tr>
+<tr><td class="num">0x51 / 0x73</td><td><b>Scan origin X / Y</b> (from SCANORIG[mag range])</td><td>DSP routine 0x241C</td></tr>
+<tr><td class="num">0x52 / 0x70</td><td>Image offset X / Y (init 0x800 / 2047; post-rotation offset cmd 0x2B)</td><td><code>_gsp_init_GSP_data</code>, DSP cmd 0x2B</td></tr>
+<tr><td class="num">0x53 / 0x71</td><td><b>Beam shift (microshift) X / Y</b></td><td>DSP cmd 0x14 from DPRAM MICRO1/MICRO2</td></tr>
+<tr><td class="num">0x54 / 0x74</td><td><b>Scan position X / Y</b>: ramp outputs, or a fixed spot position</td><td>Ramp hardware; DSP cmds 0x19 (spot), 0x06; 0x74 also per line</td></tr>
+<tr><td class="num">0x55 / 0x56 / 0x75 / 0x76</td><td><b>Scan rotation / transform coefficients</b> (init 0x8000)</td><td>DSP cmd 0x1A from DPRAM TRANSFORM</td></tr>
+<tr><td class="num">0x60 … 0x6C</td><td><b>Y (frame) ramp</b>, routing → output 0x74</td><td>DSP cmd 0x07</td></tr>
+<tr><td class="num">0x6D</td><td>Scan source / mag range bits</td><td><code>_gsp_set_scan_source</code>, <code>_DSP_set_mag_range</code></td></tr>
+<tr><td class="num">0x80 … 0x8B</td><td>Chip 4: free-running ramp started at init (ctl 0x8403, counts 0xFF/0xFF). Probably a timing or dynamic-focus generator</td><td>DSP cmd 0x12</td></tr>
+<tr><td class="num">0x90</td><td>EO board ID / version (8-bit read)</td><td><code>_gsp_init_GSP_data</code>, <code>_read_EO_version</code></td></tr>
+<tr><td class="num">0x94</td><td>Scan-speed flag (0/1; likely a filter or bandwidth select)</td><td><code>_DSP_set_scan_rate</code></td></tr>
+</tbody></table></div>
+
+<h4>Initialisation burst (DSP command 0x12): the first traffic expected on the register fiber</h4>
+<pre class="code">0C←000F  0D←0020  2B←0000  2C←000F  47←0000  67←0000  6A←0000  6B←0000  6C←0004
+80←0000  81←0001  82←0001  87←0000  88←00FF  89←00FF  8A←0000  8B←8403          <span class="c">; start chip-4 ramp</span>
+0B,0C←0  4B,4C←0                                                               <span class="c">; stop chip-0 and X ramps</span>
+10..13←0000 (C1,C2 off)   14..19←0800 (gun align, stig mid-scale)
+30,31←0000 (C3 off)  32,33←0800  34..37←0080  38..3B←0000
+50←0000 (X amplitude 0)  51..53←0800  55,56←8000
+70,71←0800  72←0000 (Y amplitude 0)  73←0800  74..76←8000
+<span class="c">; then cmd 0x23 (FCF limits); the DSP post-increments the register number, so consecutive registers are written back-to-back</span></pre>
 
 <h3>How a raster is defined (DSP command 0x07)</h3>
 <p class="prose">Scan coordinates are 16-bit offset-binary DAC codes centred on 0x7FFF. The full field is <code>MAXPIXELS</code> × <code>MAXLINES</code> (1024 × 0x303 by default), and a sub-raster (reduced raster, split screen, zoom) is a window inside it. The handler computes:</p>
@@ -123,42 +150,55 @@ reg <span class="k">0x4B</span>  read → write 0 (stop) → reprogram → resto
   <li>The DSP takes a per-line interrupt (IRQ1 → PM 0x0200) that counts lines, switches between rasters (split/quad/dual-mag), handles end-of-frame, and writes per-line values such as Y position 0x74. The timer interrupt (PM 0x2000) handles slower periodic work (stereo, frame averaging).</li>
 </ul>
 <p class="prose">The DSP crystal frequency isn't in the software, so absolute dwell times need a scope. The ratios are fixed: each scan-rate step should halve the frequency on the clock fiber.</p>
+<div class="note acc"><b>Captured:</b> there is no clock fiber. The line period is set on the EO board itself (chip 2 register 0x0A = 2<sup>n</sup>−1 for speed n; line = (r0A+1) × 87.9 µs, 2.81 ms at speed 5). The SPORT1 clock stays inside the IP board.</div>
 
-<h3>What this predicts for the four fibers</h3>
+<h3>The four EO fibers (confirmed by capture)</h3>
+<p class="prose">The EO board has <b>one HFBR-1521 transmitter and three HFBR-2521 receivers</b> (HP/Agilent Versatile Link, 5 MBd). Captures of all four with a Tektronix MSO24 during a cold boot and while operating every LEO-32 control settled their roles. All are TTL idle high at the transceivers.</p>
 <figure>
 <div class="fig narrow">
-<svg viewBox="0 0 900 330" role="img" aria-label="Predicted signals on the four scan-generator fibers">
+<svg viewBox="0 0 900 330" role="img" aria-label="Captured roles of the three inbound and one return EO fibers">
   <defs><marker id="ah4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="arrf"/></marker></defs>
   <rect x="20" y="20" width="250" height="290" class="grp"/><text x="32" y="42" class="t-head">IP board</text>
   <rect x="36" y="58" width="218" height="54" class="bx"/><text x="46" y="78" class="t-label">ADSP-21xx</text><text x="46" y="96" class="t-small t-muted">raster math, line IRQ, commands</text>
-  <rect x="36" y="128" width="218" height="46" class="bx"/><text x="46" y="148" class="t-label">Remote register port</text><text x="46" y="164" class="t-small t-mono">DM 0x3400+n · busy @0x37FF</text>
-  <rect x="36" y="190" width="218" height="46" class="bx"/><text x="46" y="210" class="t-label">SPORT1 SCLK (pixel clock)</text><text x="46" y="226" class="t-small t-mono">CLKOUT / 2^(rate−2)</text>
-  <rect x="36" y="252" width="218" height="46" class="bx"/><text x="46" y="272" class="t-label">Line/frame timing, ADC</text><text x="46" y="288" class="t-small t-muted">PMT digitised here</text>
-  <rect x="630" y="20" width="250" height="290" class="grp"/><text x="642" y="42" class="t-head">Scan generator / EO board</text>
-  <rect x="646" y="58" width="218" height="72" class="bx"/><text x="656" y="78" class="t-label">Register file (10-bit)</text><text x="656" y="96" class="t-small t-muted">lens / stig / gun-align DACs</text><text x="656" y="112" class="t-small t-muted">raster setup registers</text>
-  <rect x="646" y="146" width="218" height="80" class="bxa"/><text x="656" y="166" class="t-label">X / Y DDA ramp engine</text><text x="656" y="184" class="t-small t-muted">start + step per clock,</text><text x="656" y="200" class="t-small t-muted">count, flyback, prescaler 0x4A</text>
-  <rect x="646" y="242" width="218" height="56" class="bx"/><text x="656" y="262" class="t-label">16-bit scan DACs</text><text x="656" y="280" class="t-small t-muted">→ scan coil drivers (analogue mag)</text>
-  <path d="M254,151 L646,94" class="fib" marker-end="url(#ah4)"/><text x="400" y="110" class="t-small t-fiber">F1  register bus (addr+data), bursts</text>
-  <path d="M254,213 L646,186" class="fib" marker-end="url(#ah4)"/><text x="400" y="190" class="t-small t-fiber">F2  pixel clock, continuous</text>
-  <path d="M254,268 L646,210" class="fib" marker-end="url(#ah4)"/><text x="410" y="252" class="t-small t-fiber">F3  line / frame sync (or clock for F1)</text>
-  <path d="M254,290 C460,320 520,300 646,270" class="fib" marker-end="url(#ah4)"/><text x="420" y="316" class="t-small t-fiber">F4  ? (blank, HRRU, or return path)</text>
+  <rect x="36" y="128" width="218" height="46" class="bx"/><text x="46" y="148" class="t-label">Remote register port</text><text x="46" y="164" class="t-small t-mono">serialised at 3.6864 Mbit/s</text>
+  <rect x="36" y="190" width="218" height="46" class="bx"/><text x="46" y="210" class="t-label">Frame / line timing</text><text x="46" y="226" class="t-small t-muted">acquisition gates</text>
+  <rect x="36" y="252" width="218" height="46" class="bx"/><text x="46" y="272" class="t-label">Video ADC, frame store</text><text x="46" y="288" class="t-small t-muted">PMT digitised here (coax)</text>
+  <rect x="630" y="20" width="250" height="290" class="grp"/><text x="642" y="42" class="t-head">EO board</text>
+  <rect x="646" y="58" width="218" height="72" class="bx"/><text x="656" y="78" class="t-label">5 ramp-controller chips</text><text x="656" y="96" class="t-small t-muted">chip = n &gt;&gt; 5, register = n &amp; 31</text><text x="656" y="112" class="t-small t-muted">HFBR-1521 TX · 3× HFBR-2521 RX</text>
+  <rect x="646" y="146" width="218" height="80" class="bxa"/><text x="656" y="166" class="t-label">X ramp (own clock)</text><text x="656" y="184" class="t-small t-muted">Y written by the host</text><text x="656" y="200" class="t-small t-muted">once per line</text>
+  <rect x="646" y="242" width="218" height="56" class="bx"/><text x="656" y="262" class="t-label">Lens / stig / scan DACs</text><text x="656" y="280" class="t-small t-muted">C1, C2, objective: 20-bit over 3 A</text>
+  <path d="M254,151 L646,94" class="fib" marker-end="url(#ah4)"/><text x="350" y="110" class="t-small t-fiber">F3  register frames (32-bit), bursts</text>
+  <path d="M254,213 L646,186" class="fib" marker-end="url(#ah4)"/><text x="390" y="190" class="t-small t-fiber">F2  line gate, 550 µs per line</text>
+  <path d="M254,226 L646,210" class="fib" marker-end="url(#ah4)"/><text x="390" y="236" class="t-small t-fiber">F1  frame gate</text>
+  <path d="M646,280 C520,300 460,320 254,292" class="fib" marker-end="url(#ah4)"/><text x="400" y="318" class="t-small t-fiber">F4  read replies (start bit + 16 bits)</text>
 </svg>
 </div>
-<figcaption><b>Fig. 5</b> Working hypothesis for the four plastic fibers. F1 and F2 are strongly supported by the code; F3 and F4 are guesses to test.</figcaption>
+<figcaption><b>Fig. 4</b> Fiber roles as captured. The static analysis expected a pixel clock on one inbound fiber; there is none. Full frame format and register map: <code>SCAN_GENERATOR_INTERFACE_SPEC.md</code>.</figcaption>
 </figure>
+
+<h3>Capture decoding guide</h3>
+<p class="prose"><i>This was the prediction before capturing; it held for the register map. The packet carries no target bits (only the EO board is on these fibers), and lens changes write the DACs directly rather than through the chip-0 ramp. Results: <code>SCAN_GENERATOR_INTERFACE_SPEC.md</code> §5.</i> Each register write should appear as one packet carrying a target (EO or HRRU), a 10-bit register number and a 16-bit value, followed by an acknowledge on the return fiber. A read sends the address and gets the value back on the return fiber. These UI actions should each produce a short, recognisable set of writes:</p>
 <div class="tbl"><table>
-<thead><tr><th>Expected signal</th><th>What it should look like on a scope</th><th>How to provoke it from the UI</th></tr></thead>
+<thead><tr><th>UI action</th><th>Registers that should change</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>Register bus (EO commands)</td><td>Idle most of the time. Short packets (≈10-bit address + 16-bit data, plus target/framing) on every focus, stig, condenser or mag change; a cluster of about 25 at start-up (command 0x12); about 10–15 on scan-rate or format changes</td><td>Turn focus by one step; toggle stig X; change spot size; watch packet count and whether data bits change monotonically</td></tr>
-<tr><td>Pixel clock</td><td>Continuous square wave whose frequency halves at each scan-rate step from 3 upwards</td><td>Step scan speed 3→4→5; frequency ratio 2:1 confirms SCLK1</td></tr>
-<tr><td>Line sync / blank</td><td>Pulses at line rate (pixel clock ÷ (pixels + blank pixels)); the gap pattern changes with reduced raster and with line scan</td><td>Toggle reduced raster, spot, line scan; switch 1024 vs 512 pixels if the store resolution allows</td></tr>
-<tr><td>Frame sync</td><td>One pulse per frame (÷ lines + blank lines)</td><td>Freeze/unfreeze; frame averaging</td></tr>
+<tr><td>Power-up / SEM init</td><td>Init burst above (≈60 writes), then raster setup</td><td>Best reference for the packet format: known order and values</td></tr>
+<tr><td>Focus knob, one click</td><td class="num">0x31 (fine), sometimes 0x30</td><td>12-bit value moves by a small step</td></tr>
+<tr><td>Stigmator X / Y</td><td class="num">0x16 / 0x17</td><td>12-bit, mid-scale 0x800</td></tr>
+<tr><td>Spot size / probe current</td><td class="num">chip-0 ramp 0x00–0x0C, then 0x10–0x13</td><td>Condensers ramp smoothly through the ramp engine</td></tr>
+<tr><td>Gun alignment</td><td class="num">0x14, 0x15, 0x32, 0x33</td><td>Via DSP command 0x14</td></tr>
+<tr><td>Beam shift</td><td class="num">0x53, 0x71</td><td>MICRO1 values</td></tr>
+<tr><td>Magnification</td><td class="num">0x50, 0x72 (amplitude); 0x51, 0x73 (origin) on range change; 0x4D, 0x6D bits</td><td>Within one mag range only the amplitude should change</td></tr>
+<tr><td>Scan rotation</td><td class="num">0x55, 0x56, 0x75, 0x76</td><td>Expect sin/cos-like pairs</td></tr>
+<tr><td>Scan speed</td><td class="num">0x4B (stop) → 0x4A, 0x4C, 0x4D, 0x54, 0x94 → 0x4B (run)</td><td>Pixel-clock fiber frequency halves per step from rate 3</td></tr>
+<tr><td>Reduced raster / store resolution</td><td class="num">0x40–0x42, 0x47–0x49, 0x60–0x62, 0x68, 0x69, with 0x4B stop/restart</td><td>Check against the raster formulas below</td></tr>
+<tr><td>Spot mode</td><td class="num">0x54, 0x74</td><td>Fixed positions, ramp routing changed</td></tr>
+<tr><td>Focus wobble / stig wobble / dynamic stig</td><td class="num">chip-1 or chip-0 ramp + ctl 0x8043 / 0x8063 / 0x8632; 0x39</td><td>Ramp engine drives the output continuously; no per-step traffic</td></tr>
+<tr><td>Emission imaging</td><td class="num">0x0C←8, 0x2C←0xA, then gun-align writes</td><td>Chips 0/1 ramp the gun deflectors</td></tr>
 </tbody></table></div>
-<div class="note acc"><b>Alternative to rule out.</b> The raster engine could sit on the IP board, with the fibers carrying serialised 16-bit X and Y codes at the pixel rate. Two things argue against this: the lens set-points share the same register space, and the slow-rate prescaler (0x4A) is a register on the EO target. It is still cheap to check. If a fiber shows dense data at every pixel clock whose content ramps along the line, the DDA is local and that fiber carries DAC samples.</div>
 
 <h3>Still to decode</h3>
 <ul class="prose">
-  <li>The EO register numbers for each lens, condenser, stigmator and gun-align DAC. They are held in <code>g200.440</code> data tables and passed to <code>_write_EO_value</code>; a full TMS340 disassembly (MAME <code>unidasm</code>) will list them. A capture while turning individual knobs gets them faster.</li>
-  <li>The exact bit layout of the control words (0x4B = 0x8402/0x8422, 0x0B/0x2B = 0x8633, 0x8B = 0x8403) and of IP-board registers 0x40/0x58. A capture before and after "start scanning" (command 0x0B) will show them.</li>
-  <li>The remaining 30-odd DSP handlers (dual-mag, stereo, FCF dynamic focus, averaging) are mapped by entry point but not read line by line.</li>
+  <li><s>The wire format of a register packet.</s> Decoded: <code>0 R n[12] value[16] 11</code> at 3.6864 Mbit/s (scan spec §3).</li>
+  <li>Exact meanings of ramp parameters +3…+7 and the control-word bits. Compare captures of focus wobble (0x8043), stig wobble (0x8063) and scanning (0x8402/0x8422).</li>
+  <li>HRRU target (0x20): uses the same chip layout (X at 0x40, Y at 0x60). It only matters if the photo unit is kept.</li>
 </ul>

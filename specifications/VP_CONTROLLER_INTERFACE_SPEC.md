@@ -4,7 +4,7 @@
 |---|---|
 | Subsystem | VP control board ("Orsay" / "Interface HP"): chamber isolation valve, VP rotary-pumping valve, proportional gas-admit valve, chamber Pirani gauge, chamber pressure regulation |
 | Host in the original system | Win98 PC, COM2, program `hpapp.exe` ("hpapp32", 1998), settings in `C:\WINDOWS\LEO.INI` section `[HPAPP]` |
-| Revision | 1.0, 2026-11-12 |
+| Revision | 1.1, 2026-11-15: lens note in §7 (1.0 2026-11-12) |
 | Basis | Live captures of both directions on COM2, plus disassembly of `hpapp.exe` |
 
 Confidence markers used below: **[C]** confirmed by capture, **[F]** taken from the original software but not seen on the wire, **[I]** inferred and needing verification.
@@ -240,6 +240,8 @@ Beam off and filament cooled. Send new `MC` and `HP`. The state goes 9 → 8 →
 3. **Always set `HP` and `MC` before `TO 7`.** A `TO 7` run with no valid stored target admitted gas until the Penning side saw it (`NSP` within 4.7 s): effectively a vent.
 4. Watch the stage/vacuum Penning state during VP. It should stay `SPVR`, since the turbo side is isolated. A drop to `NSP` means gas is reaching the column: abort with `TO 10` (or `RE 0`).
 5. Keep the LP/HP states consistent with the stage/vacuum controller: `TO 2` at air, `TO 3` when pumped.
+
+- **Lenses in VP.** On this machine VP is switched from hpapp32 and LEO-32's own VP button is disabled, so LEO-32's column model never knew the chamber was in VP. Its VP lens routine (`_set_lenses_for_HPSEM` in `g200.440`) was never used, and the high-vacuum lens settings applied in VP too. The control box does the same (`ELECTRON_OPTICS_MODEL.md` §6.7).
 
 ## 8. Open items
 
